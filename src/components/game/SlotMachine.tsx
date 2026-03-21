@@ -20,56 +20,49 @@ interface Props {
 }
 
 /**
- * Roulette-style slot machine: cycles through the 10 answer options rapidly,
- * decelerates, and lands on the correct answer with a gold highlight.
- *
- * This spins through the actual answer choices — the same 10 options
- * that the answerers will see — so the QM can watch it "select" their question.
+ * Roulette-style slot machine: spins through numbers 1–10 rapidly,
+ * decelerates, and lands on the correct answer number with a gold highlight.
+ * After landing, the question text fades in below the number.
  */
 export function SlotMachine({ questionId, visibleQuestionIds, onRevealed }: Props) {
-  const [displayText, setDisplayText] = useState('');
+  const [displayNumber, setDisplayNumber] = useState<number | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const containerOpacity = useSharedValue(0);
-  const textScale = useSharedValue(1);
-  const borderOpacity = useSharedValue(0.15);
+  const numberScale = useSharedValue(1);
+  const textOpacity = useSharedValue(0);
 
   const realQuestion = questionBank.find((q) => q.id === questionId);
-
-  // Build the pool of answer options (excluding the correct one for spinning)
-  const answerOptions = visibleQuestionIds
-    .filter((id) => id !== questionId)
-    .map((id) => questionBank.find((q) => q.id === id))
-    .filter(Boolean) as { id: number; text: string }[];
+  const correctIndex = visibleQuestionIds.indexOf(questionId);
+  const totalOptions = visibleQuestionIds.length; // 10
 
   useEffect(() => {
     containerOpacity.value = withTiming(1, { duration: 300 });
 
-    borderOpacity.value = withSequence(
-      withTiming(0.4, { duration: 600 }),
-      withTiming(0.15, { duration: 600 })
-    );
-
     let step = 0;
-    const steps = 20;
+    const steps = 24; // more steps for a longer spin
 
     const tick = () => {
       if (step < steps) {
-        // Cycle through the answer options round-robin style
-        const option = answerOptions[step % answerOptions.length];
-        setDisplayText(option?.text ?? '...');
+        // Cycle 1–10 round-robin
+        setDisplayNumber((step % totalOptions) + 1);
         step++;
 
-        // Exponential slowdown: starts fast (50ms), ends slow (400ms)
-        const delay = 50 + Math.pow(step / steps, 2.8) * 380;
+        // Exponential slowdown: starts fast (40ms), ends slow (450ms)
+        const delay = 40 + Math.pow(step / steps, 3) * 420;
         setTimeout(tick, delay);
       } else {
-        // Final reveal — land on the correct answer
-        setDisplayText(realQuestion?.text ?? '');
+        // Land on the correct answer number
+        setDisplayNumber(correctIndex + 1);
         setIsRevealed(true);
-        textScale.value = withSequence(
-          withTiming(1.06, { duration: 150, easing: Easing.out(Easing.cubic) }),
+
+        numberScale.value = withSequence(
+          withTiming(1.15, { duration: 150, easing: Easing.out(Easing.cubic) }),
           withTiming(1, { duration: 200 })
         );
+
+        // Fade in the question text after the number lands
+        textOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+
         onRevealed?.();
       }
     };
@@ -81,25 +74,37 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed }: Prop
     opacity: containerOpacity.value,
   }));
 
-  const textStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: textScale.value }],
+  const numberStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: numberScale.value }],
   }));
 
-  const scanlineStyle = useAnimatedStyle(() => ({
-    opacity: borderOpacity.value,
+  const questionTextStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
   }));
 
   return (
     <Animated.View style={[styles.container, containerStyle]}>
       <View style={[styles.card, isRevealed && styles.cardRevealed]}>
-        <Animated.View style={textStyle}>
-          <Text style={[styles.questionText, isRevealed && styles.questionTextRevealed]}>
-            {displayText || '...'}
+        {/* Big spinning number */}
+        <Animated.View style={numberStyle}>
+          <Text style={[styles.number, isRevealed && styles.numberRevealed]}>
+            {displayNumber ?? '?'}
           </Text>
         </Animated.View>
+
+        {/* Question text fades in after landing */}
+        {isRevealed && (
+          <Animated.View style={questionTextStyle}>
+            <Text style={styles.questionText}>
+              {realQuestion?.text ?? ''}
+            </Text>
+          </Animated.View>
+        )}
       </View>
+
+      {/* Scanline while spinning */}
       {!isRevealed && (
-        <Animated.View style={[styles.scanline, scanlineStyle]} />
+        <View style={styles.scanline} />
       )}
     </Animated.View>
   );
@@ -119,18 +124,25 @@ const styles = StyleSheet.create({
     minHeight: 120,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: Spacing.lg,
   },
   cardRevealed: {
     borderColor: Colors.primary,
     backgroundColor: Colors.raised,
   },
-  questionText: {
-    ...Typography.heading,
+  number: {
+    fontSize: 56,
+    fontWeight: '800',
     color: Colors.muted,
     textAlign: 'center',
   },
-  questionTextRevealed: {
+  numberRevealed: {
+    color: Colors.primary,
+  },
+  questionText: {
+    ...Typography.heading,
     color: Colors.white,
+    textAlign: 'center',
   },
   scanline: {
     position: 'absolute',
@@ -139,6 +151,7 @@ const styles = StyleSheet.create({
     top: '50%',
     height: 2,
     backgroundColor: Colors.primary,
+    opacity: 0.25,
     borderRadius: 1,
   },
 });
