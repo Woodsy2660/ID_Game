@@ -28,6 +28,7 @@ export default function QMActiveScreen() {
   const router = useRouter();
   const isQM = useGameStore((s) => s.isQM);
   const questionId = useGameStore((s) => s.questionId);
+  const visibleQuestionIds = useGameStore((s) => s.visibleQuestionIds);
   const qmPlayer = useGameStore((s) => s.getQMPlayer());
   const advancePhase = useGameStore((s) => s.advancePhase);
   const [revealed, setRevealed] = useState(false);
@@ -49,6 +50,7 @@ export default function QMActiveScreen() {
           {/* Roulette wheel */}
           <SlotMachine
             questionId={questionId!}
+            visibleQuestionIds={visibleQuestionIds}
             onRevealed={() => setRevealed(true)}
           />
 
