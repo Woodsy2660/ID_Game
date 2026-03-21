@@ -6,9 +6,23 @@
     "scheme": "id-game",
     "platforms": ["ios", "android", "web"],
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#121212"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#121212"
+      }
+    },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",

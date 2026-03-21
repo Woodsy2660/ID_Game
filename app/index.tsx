@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ui/ScreenContainer';
 import { Button } from '../src/components/ui/Button';
+import { Logo } from '../src/components/ui/Logo';
 import { useGameStore } from '../src/store/gameStore';
 import { Colors, Spacing, Typography, Radius } from '../src/theme';
 import type { Player } from '../src/store/types';
@@ -36,11 +37,10 @@ export default function DevEntry() {
   return (
     <ScreenContainer centered>
       <View style={styles.content}>
-        <Text style={styles.title}>The ID Game</Text>
-        <Text style={styles.subtitle}>Development Entry</Text>
+        <Logo size="large" />
 
         <View style={styles.playerList}>
-          <Text style={styles.label}>MOCK PLAYERS</Text>
+          <Text style={styles.label}>PLAYERS</Text>
           {MOCK_PLAYERS.map((p) => (
             <View key={p.id} style={styles.playerRow}>
               <View style={[styles.playerDot, p.id === LOCAL_PLAYER_ID && styles.playerDotLocal]} />
@@ -64,14 +64,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing['2xl'],
     width: '100%',
-  },
-  title: {
-    ...Typography.display,
-    color: Colors.primary,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.muted,
   },
   playerList: {
     width: '100%',
