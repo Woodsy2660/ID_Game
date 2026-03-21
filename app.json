@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "ID Game",
+    "slug": "id-game",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "id-game",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
