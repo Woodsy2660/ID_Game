@@ -22,8 +22,10 @@ export default function JoinScreen() {
   const handleJoin = async (roomCode: string) => {
     setLoading(true)
     setErrorMsg('')
+    const { data: { session } } = await supabase.auth.getSession()
     const { data, error } = await supabase.functions.invoke('join-room', {
       body: { room_code: roomCode, display_name },
+      headers: { Authorization: `Bearer ${session?.access_token}` },
     })
     setLoading(false)
 

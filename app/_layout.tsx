@@ -2,8 +2,10 @@ import React, { createContext, useContext, useEffect } from 'react'
 import { ActivityIndicator, View, StyleSheet } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { StatusBar } from 'expo-status-bar'
 import { User } from '@supabase/supabase-js'
 import { useAuth } from '../src/hooks/useAuth'
+import { Colors } from '../src/theme'
 
 interface AuthContextValue {
   user: User | null
@@ -44,8 +46,15 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <StatusBar style="light" />
       <AuthContext.Provider value={{ user, authError, setDisplayName }}>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack 
+          screenOptions={{ 
+            headerShown: false,
+            contentStyle: { backgroundColor: Colors?.black || '#121212' },
+            animation: 'fade'
+          }} 
+        />
       </AuthContext.Provider>
     </SafeAreaProvider>
   )
@@ -56,5 +65,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#121212',
   },
 })

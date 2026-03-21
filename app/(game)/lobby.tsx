@@ -3,10 +3,12 @@ import { View, Text, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
 import { usePlayerStore } from '../../src/stores/playerStore'
+import { useGameStore } from '../../src/store/gameStore'
 import { useRoom } from '../../src/hooks/useRoom'
 import { PlayerList } from '../../src/components/PlayerList'
 import { RoomCode } from '../../src/components/RoomCode'
 import { Button } from '../../src/components/Button'
+import type { GameStartPayload } from '../../src/store/types'
 
 export default function LobbyScreen() {
   const router = useRouter()
@@ -22,10 +24,21 @@ export default function LobbyScreen() {
     }
   }, [])
 
-  const handleGameStart = useCallback(() => {
+  const handleGameStart = useCallback((payload: GameStartPayload) => {
     navigatedForward.current = true
-    router.push('/game/round')
-  }, [router])
+    useGameStore.getState().initGame(
+      payload.players,
+      player_id ?? '',
+      room_code ?? '',
+      {
+        qmPlayerId: payload.qmPlayerId,
+        questionId: payload.questionId,
+        visibleQuestionIds: payload.visibleQuestionIds,
+        roundId: payload.roundId,
+      }
+    )
+    router.push('/(game)/round-start')
+  }, [router, player_id, room_code])
 
   const { players, isConnected } = useRoom(
     room_code ?? '',
@@ -36,8 +49,12 @@ export default function LobbyScreen() {
   )
 
   const handleStartGame = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
     await supabase.functions.invoke('start-game', {
       body: { room_id },
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+      },
     })
   }
 

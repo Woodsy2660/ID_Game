@@ -6,6 +6,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useAuthContext } from '../_layout'
@@ -66,6 +67,12 @@ export default function HomeScreen() {
           <View style={styles.gap} />
           <Button label="Join Room" onPress={handleJoinRoom} disabled={!isValid} />
         </View>
+
+        {__DEV__ && (
+          <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
+            <Text style={styles.devLinkText}>⚙ Dev Mode</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </KeyboardAvoidingView>
   )
@@ -115,5 +122,14 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  devLink: {
+    alignSelf: 'center',
+    marginTop: 8,
+    padding: 8,
+  },
+  devLinkText: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
 })

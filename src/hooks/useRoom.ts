@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import type { GameStartPayload } from '../store/types'
 
 interface RoomPlayer {
   player_id: string
@@ -17,7 +18,7 @@ export function useRoom(
   player_id: string,
   display_name: string,
   is_host: boolean,
-  onGameStart: () => void
+  onGameStart: (payload: GameStartPayload) => void
 ): UseRoomReturn {
   const [players, setPlayers] = useState<RoomPlayer[]>([])
   const [isConnected, setIsConnected] = useState(false)
@@ -40,8 +41,8 @@ export function useRoom(
       })
 
     broadcastChannel
-      .on('broadcast', { event: 'game:started' }, () => {
-        onGameStart()
+      .on('broadcast', { event: 'game:started' }, (event) => {
+        onGameStart(event.payload as GameStartPayload)
       })
       .subscribe()
 

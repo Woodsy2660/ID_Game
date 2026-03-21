@@ -1,27 +1,36 @@
 {
   "expo": {
-    "name": "ID Game",
+    "name": "The ID Game",
     "slug": "id-game",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "id-game",
-    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android", "web"],
     "newArchEnabled": true,
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#121212"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#121212"
       }
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
