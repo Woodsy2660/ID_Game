@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "The ID Game",
+    "slug": "id-game",
+    "version": "1.0.0",
+    "scheme": "id-game",
+    "platforms": ["ios", "android", "web"],
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ]
+  }
+}

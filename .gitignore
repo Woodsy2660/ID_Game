@@ -1,3 +1,12 @@
 node_modules/
-.next/
-next-env.d.ts
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.env
+.env.local
