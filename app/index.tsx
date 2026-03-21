@@ -16,10 +16,10 @@ import type { Player } from '../src/store/types';
 
 const MOCK_PLAYERS: Player[] = [
   { id: 'p1', displayName: 'Tyler', isHost: true },
-  { id: 'p2', displayName: 'Jordan', isHost: false },
-  { id: 'p3', displayName: 'Alex', isHost: false },
-  { id: 'p4', displayName: 'Sam', isHost: false },
-  { id: 'p5', displayName: 'Casey', isHost: false },
+  { id: 'p2', displayName: 'Woodsy', isHost: false },
+  { id: 'p3', displayName: 'Digby', isHost: false },
+  { id: 'p4', displayName: 'Luke', isHost: false },
+  { id: 'p5', displayName: 'Rozza', isHost: false },
 ];
 
 const LOCAL_PLAYER_ID = 'p1';

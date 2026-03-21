@@ -29,8 +29,6 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed }: Prop
   const [isRevealed, setIsRevealed] = useState(false);
   const containerOpacity = useSharedValue(0);
   const numberScale = useSharedValue(1);
-  const textOpacity = useSharedValue(0);
-
   const realQuestion = questionBank.find((q) => q.id === questionId);
   const correctIndex = visibleQuestionIds.indexOf(questionId);
   const totalOptions = visibleQuestionIds.length; // 10
@@ -60,9 +58,6 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed }: Prop
           withTiming(1, { duration: 200 })
         );
 
-        // Fade in the question text after the number lands
-        textOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
-
         onRevealed?.();
       }
     };
@@ -78,10 +73,6 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed }: Prop
     transform: [{ scale: numberScale.value }],
   }));
 
-  const questionTextStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.value,
-  }));
-
   return (
     <Animated.View style={[styles.container, containerStyle]}>
       <View style={[styles.card, isRevealed && styles.cardRevealed]}>
@@ -92,14 +83,7 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed }: Prop
           </Text>
         </Animated.View>
 
-        {/* Question text fades in after landing */}
-        {isRevealed && (
-          <Animated.View style={questionTextStyle}>
-            <Text style={styles.questionText}>
-              {realQuestion?.text ?? ''}
-            </Text>
-          </Animated.View>
-        )}
+        {/* No question text here — SecretQuestionCard below handles that */}
       </View>
 
       {/* Scanline while spinning */}
@@ -124,7 +108,6 @@ const styles = StyleSheet.create({
     minHeight: 120,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.lg,
   },
   cardRevealed: {
     borderColor: Colors.primary,
@@ -138,11 +121,6 @@ const styles = StyleSheet.create({
   },
   numberRevealed: {
     color: Colors.primary,
-  },
-  questionText: {
-    ...Typography.heading,
-    color: Colors.white,
-    textAlign: 'center',
   },
   scanline: {
     position: 'absolute',

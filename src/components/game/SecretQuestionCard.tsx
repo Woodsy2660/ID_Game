@@ -35,7 +35,6 @@ export function SecretQuestionCard({ questionText, qmName }: Props) {
     <Animated.View style={animatedStyle}>
       <View style={styles.card}>
         <Text style={styles.label}>YOUR SECRET QUESTION</Text>
-        <Text style={styles.prefix}>Who is most likely to...</Text>
         <Text style={styles.question}>{questionText}</Text>
       </View>
       <Text style={styles.instruction}>
@@ -58,10 +57,6 @@ const styles = StyleSheet.create({
     ...Typography.label,
     color: Colors.primary,
     marginBottom: Spacing.xs,
-  },
-  prefix: {
-    ...Typography.body,
-    color: Colors.muted,
   },
   question: {
     ...Typography.display,
