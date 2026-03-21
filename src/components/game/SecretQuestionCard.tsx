@@ -38,7 +38,7 @@ export function SecretQuestionCard({ questionText, qmName }: Props) {
         <Text style={styles.question}>{questionText}</Text>
       </View>
       <Text style={styles.instruction}>
-        The other players are guessing which question you received.
+        Rearrange the ID cards from most to least likely, then let the others guess your question.
       </Text>
     </Animated.View>
   );

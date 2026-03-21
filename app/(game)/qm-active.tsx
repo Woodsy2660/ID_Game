@@ -45,7 +45,7 @@ export default function QMActiveScreen() {
       <ScreenContainer>
         <View style={styles.container}>
           <Text style={styles.label}>YOUR SECRET QUESTION</Text>
-          <Text style={styles.subtitle}>Show this to everyone — but keep a poker face!</Text>
+          <Text style={styles.subtitle}>Keep this secret! Rearrange the ID cards from most to least likely.</Text>
 
           {/* Roulette wheel */}
           <SlotMachine
