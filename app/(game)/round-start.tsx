@@ -15,7 +15,6 @@ import { Spacing } from '../../src/theme';
  */
 export default function RoundStartScreen() {
   const router = useRouter();
-  const phase = useGameStore((s) => s.phase);
   const currentRound = useGameStore((s) => s.currentRound);
   const isQM = useGameStore((s) => s.isQM);
   const qmPlayer = useGameStore((s) => s.getQMPlayer());

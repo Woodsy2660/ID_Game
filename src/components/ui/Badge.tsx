@@ -4,13 +4,15 @@ import { Colors, Spacing, Radius } from '../../theme';
 
 interface Props {
   label: string;
-  variant?: 'amber' | 'muted' | 'error';
+  variant?: 'primary' | 'tertiary' | 'muted' | 'error';
 }
 
-export function Badge({ label, variant = 'amber' }: Props) {
+export function Badge({ label, variant = 'primary' }: Props) {
+  const isDark = variant === 'primary' || variant === 'tertiary';
+
   return (
-    <View style={[styles.base, styles[variant]]}>
-      <Text style={[styles.text, variant === 'amber' ? styles.textDark : styles.textLight]}>
+    <View style={[styles.base, variantBg[variant]]}>
+      <Text style={[styles.text, isDark ? styles.textDark : styles.textLight]}>
         {label}
       </Text>
     </View>
@@ -21,23 +23,10 @@ const styles = StyleSheet.create({
   base: {
     height: 24,
     paddingHorizontal: Spacing.md,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.xs,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
-  },
-  amber: {
-    backgroundColor: Colors.amber,
-  },
-  muted: {
-    backgroundColor: Colors.raised,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  error: {
-    backgroundColor: 'rgba(232, 69, 69, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(232, 69, 69, 0.25)',
   },
   text: {
     fontSize: 11,
@@ -50,5 +39,24 @@ const styles = StyleSheet.create({
   },
   textLight: {
     color: Colors.muted,
+  },
+});
+
+const variantBg = StyleSheet.create({
+  primary: {
+    backgroundColor: Colors.primary,
+  },
+  tertiary: {
+    backgroundColor: Colors.tertiary,
+  },
+  muted: {
+    backgroundColor: Colors.raised,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  error: {
+    backgroundColor: Colors.errorMuted,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 82, 82, 0.25)',
   },
 });

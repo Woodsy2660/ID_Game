@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
@@ -54,7 +54,6 @@ export default function AnswerPhaseScreen() {
   useEffect(() => {
     const channel = getGameChannel();
     const unsub = channel.on('round:all_answered', () => {
-      // Brief delay before transitioning
       setTimeout(() => {
         computeResults();
         advancePhase(); // → round_results
@@ -84,7 +83,6 @@ export default function AnswerPhaseScreen() {
     submitAnswer(localPlayerId, selectedId);
     setHasSubmitted(true);
 
-    // Check if that was the last answer
     if (allAnswered()) {
       const channel = getGameChannel();
       channel.emit('round:all_answered', {});
@@ -139,6 +137,7 @@ export default function AnswerPhaseScreen() {
           </View>
         ) : (
           <View style={styles.submittedArea}>
+            <View style={styles.submittedDot} />
             <Text style={styles.submittedText}>Answer locked in! Waiting for others...</Text>
           </View>
         )}
@@ -163,7 +162,7 @@ const styles = StyleSheet.create({
   },
   headerLabel: {
     ...Typography.label,
-    color: Colors.amber,
+    color: Colors.primary,
     textAlign: 'center',
   },
   submitArea: {
@@ -173,6 +172,13 @@ const styles = StyleSheet.create({
   submittedArea: {
     paddingVertical: Spacing.xl,
     alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  submittedDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.tertiary,
   },
   submittedText: {
     ...Typography.body,

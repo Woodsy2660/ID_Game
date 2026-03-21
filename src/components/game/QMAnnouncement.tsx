@@ -4,7 +4,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withDelay,
   withSequence,
   Easing,
 } from 'react-native-reanimated';
@@ -60,12 +59,12 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.display,
-    color: Colors.amber,
+    color: Colors.primary,
   },
   nameCard: {
-    backgroundColor: Colors.raised,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
     borderRadius: Radius.lg,
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing['3xl'],

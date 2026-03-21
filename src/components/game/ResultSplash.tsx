@@ -4,8 +4,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withDelay,
-  withSequence,
   Easing,
 } from 'react-native-reanimated';
 import { Colors, Spacing, Typography, Radius } from '../../theme';
@@ -54,12 +52,12 @@ export function ResultSplash({ questionId, qmName, answers, players }: Props) {
       </Text>
 
       <View style={styles.resultList}>
-        {answers.map((answer, index) => {
+        {answers.map((answer) => {
           const player = players.find((p) => p.id === answer.playerId);
           const guessedQ = questionBank.find((q) => q.id === answer.guessedQuestionId);
 
           return (
-            <Animated.View
+            <View
               key={answer.playerId}
               style={[
                 styles.resultRow,
@@ -77,7 +75,7 @@ export function ResultSplash({ questionId, qmName, answers, players }: Props) {
               <Text style={[styles.resultBadge, answer.isCorrect ? styles.badgeCorrect : styles.badgeWrong]}>
                 {answer.isCorrect ? '+1' : '0'}
               </Text>
-            </Animated.View>
+            </View>
           );
         })}
       </View>
@@ -92,14 +90,14 @@ const styles = StyleSheet.create({
   revealCard: {
     backgroundColor: Colors.raised,
     borderWidth: 1,
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
     borderRadius: Radius.lg,
     padding: Spacing['2xl'],
     gap: Spacing.sm,
   },
   label: {
     ...Typography.label,
-    color: Colors.amber,
+    color: Colors.primary,
   },
   questionText: {
     ...Typography.heading,

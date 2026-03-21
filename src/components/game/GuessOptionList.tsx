@@ -1,13 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  Easing,
-  FadeIn,
-} from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors, Spacing, Typography, Radius } from '../../theme';
 import questionBank from '../../data/questionBank.json';
 
@@ -21,8 +14,6 @@ interface Props {
   /** The ID the player already selected (for highlighting) */
   selectedId?: number | null;
 }
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function GuessOptionList({ visibleQuestionIds, onSelect, disabled, selectedId }: Props) {
   const questions = visibleQuestionIds.map((id) => {
@@ -54,7 +45,11 @@ export function GuessOptionList({ visibleQuestionIds, onSelect, disabled, select
                 disabled && !isSelected && styles.optionDisabled,
               ]}
             >
-              <Text style={styles.optionNumber}>{index + 1}</Text>
+              <View style={[styles.numberBadge, isSelected && styles.numberBadgeSelected]}>
+                <Text style={[styles.optionNumber, isSelected && styles.optionNumberSelected]}>
+                  {index + 1}
+                </Text>
+              </View>
               <Text
                 style={[
                   styles.optionText,
@@ -93,7 +88,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   optionSelected: {
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
     backgroundColor: Colors.raised,
   },
   optionPressed: {
@@ -102,11 +97,24 @@ const styles = StyleSheet.create({
   optionDisabled: {
     opacity: 0.4,
   },
+  numberBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: Radius.xs,
+    backgroundColor: Colors.raised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  numberBadgeSelected: {
+    backgroundColor: Colors.primary,
+  },
   optionNumber: {
     ...Typography.label,
     color: Colors.muted,
-    width: 20,
-    textAlign: 'center',
+    lineHeight: 14,
+  },
+  optionNumberSelected: {
+    color: Colors.black,
   },
   optionText: {
     ...Typography.body,
@@ -114,7 +122,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionTextSelected: {
-    color: Colors.amber,
+    color: Colors.primary,
   },
   optionTextDisabled: {
     color: Colors.muted,

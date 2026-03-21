@@ -31,6 +31,9 @@ export const Typography = {
 } as const;
 
 export const Radius = {
+  xs: 4,
   sm: 8,
   lg: 12,
+  xl: 16,
+  full: 999,
 } as const;

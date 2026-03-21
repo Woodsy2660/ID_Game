@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ui/ScreenContainer';
 import { Button } from '../src/components/ui/Button';
 import { useGameStore } from '../src/store/gameStore';
-import { Colors, Spacing, Typography } from '../src/theme';
+import { Colors, Spacing, Typography, Radius } from '../src/theme';
 import type { Player } from '../src/store/types';
 
 /**
@@ -12,7 +12,6 @@ import type { Player } from '../src/store/types';
  * and routing into the game flow.
  *
  * In production, this screen is replaced by the auth/lobby flow.
- * The lobby calls initGame() and then navigates to /(game)/round-start.
  */
 
 const MOCK_PLAYERS: Player[] = [
@@ -43,10 +42,13 @@ export default function DevEntry() {
         <View style={styles.playerList}>
           <Text style={styles.label}>MOCK PLAYERS</Text>
           {MOCK_PLAYERS.map((p) => (
-            <Text key={p.id} style={styles.playerName}>
-              {p.displayName}
-              {p.id === LOCAL_PLAYER_ID ? ' (You)' : ''}
-            </Text>
+            <View key={p.id} style={styles.playerRow}>
+              <View style={[styles.playerDot, p.id === LOCAL_PLAYER_ID && styles.playerDotLocal]} />
+              <Text style={styles.playerName}>
+                {p.displayName}
+                {p.id === LOCAL_PLAYER_ID ? ' (You)' : ''}
+              </Text>
+            </View>
           ))}
         </View>
 
@@ -65,7 +67,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.display,
-    color: Colors.amber,
+    color: Colors.primary,
   },
   subtitle: {
     ...Typography.body,
@@ -76,7 +78,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 12,
+    borderRadius: Radius.lg,
     padding: Spacing.xl,
     gap: Spacing.sm,
   },
@@ -84,6 +86,20 @@ const styles = StyleSheet.create({
     ...Typography.label,
     color: Colors.muted,
     marginBottom: Spacing.xs,
+  },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  playerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.muted,
+  },
+  playerDotLocal: {
+    backgroundColor: Colors.primary,
   },
   playerName: {
     ...Typography.body,

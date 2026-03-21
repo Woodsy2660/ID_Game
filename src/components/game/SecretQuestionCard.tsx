@@ -16,7 +16,6 @@ interface Props {
 /**
  * Displays the secret question to the QM.
  * "Who is most likely to... {question}?"
- * The QM sees this while answerers are guessing.
  */
 export function SecretQuestionCard({ questionText, qmName }: Props) {
   const opacity = useSharedValue(0);
@@ -50,14 +49,14 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.raised,
     borderWidth: 1,
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
     borderRadius: Radius.lg,
     padding: Spacing['2xl'],
     gap: Spacing.sm,
   },
   label: {
     ...Typography.label,
-    color: Colors.amber,
+    color: Colors.primary,
     marginBottom: Spacing.xs,
   },
   prefix: {

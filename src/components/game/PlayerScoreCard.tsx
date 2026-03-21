@@ -17,15 +17,21 @@ export function PlayerScoreCard({ rank, playerName, score, isLocal, isQM }: Prop
   return (
     <Animated.View entering={FadeIn.delay(rank * 80).duration(300)}>
       <View style={[styles.row, isLocal && styles.rowLocal, isTop && styles.rowTop]}>
-        <Text style={[styles.rank, isTop && styles.rankTop]}>
-          {rank}
-        </Text>
+        <View style={[styles.rankBadge, isTop && styles.rankBadgeTop]}>
+          <Text style={[styles.rank, isTop && styles.rankTop]}>
+            {rank}
+          </Text>
+        </View>
         <View style={styles.info}>
           <Text style={[styles.name, isTop && styles.nameTop]}>
             {playerName}
             {isLocal ? ' (You)' : ''}
           </Text>
-          {isQM && <Text style={styles.qmBadge}>QM</Text>}
+          {isQM && (
+            <View style={styles.qmTag}>
+              <Text style={styles.qmBadge}>QM</Text>
+            </View>
+          )}
         </View>
         <Text style={[styles.score, isTop && styles.scoreTop]}>
           {score}
@@ -48,20 +54,30 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   rowLocal: {
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
   },
   rowTop: {
     backgroundColor: Colors.raised,
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
+  },
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: Radius.xs,
+    backgroundColor: Colors.raised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankBadgeTop: {
+    backgroundColor: Colors.primary,
   },
   rank: {
     ...Typography.heading,
     color: Colors.muted,
-    width: 28,
-    textAlign: 'center',
+    fontSize: 14,
   },
   rankTop: {
-    color: Colors.amber,
+    color: Colors.black,
   },
   info: {
     flex: 1,
@@ -75,12 +91,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   nameTop: {
-    color: Colors.amber,
+    color: Colors.primary,
+  },
+  qmTag: {
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.xs,
   },
   qmBadge: {
     ...Typography.label,
-    color: Colors.muted,
+    color: Colors.white,
     fontSize: 9,
+    lineHeight: 12,
   },
   score: {
     ...Typography.heading,
@@ -89,6 +112,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   scoreTop: {
-    color: Colors.amber,
+    color: Colors.primary,
   },
 });

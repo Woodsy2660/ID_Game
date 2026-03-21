@@ -30,7 +30,7 @@ export default function LeaderboardScreen() {
   const nextQM = getNextQMPlayer();
 
   const handleNextRound = () => {
-    nextRound(); // increments round, calls startRound(), sets phase to round_start
+    nextRound();
     router.replace('/(game)/round-start');
   };
 
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.display,
-    color: Colors.amber,
+    color: Colors.primary,
   },
   roundInfo: {
     ...Typography.label,

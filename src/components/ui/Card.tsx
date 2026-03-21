@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
   },
   highlighted: {
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
     backgroundColor: Colors.raised,
   },
 });

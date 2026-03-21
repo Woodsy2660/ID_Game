@@ -1,10 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from 'react-native-reanimated';
 import { Colors, Spacing, Typography, Radius } from '../../theme';
 import { ProgressBar } from '../ui/ProgressBar';
 
@@ -30,7 +25,7 @@ export function SubmissionTracker({ submitted, total, playerNames }: Props) {
           <Text style={styles.countMuted}> / {total}</Text>
         </Text>
       </View>
-      <ProgressBar progress={progress} />
+      <ProgressBar progress={progress} color={Colors.tertiary} />
       {playerNames && playerNames.length > 0 && (
         <View style={styles.names}>
           {playerNames.map((name, i) => (
@@ -64,7 +59,7 @@ const styles = StyleSheet.create({
     ...Typography.heading,
   },
   countHighlight: {
-    color: Colors.amber,
+    color: Colors.tertiary,
   },
   countMuted: {
     color: Colors.muted,
@@ -87,8 +82,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   indicatorActive: {
-    backgroundColor: Colors.amber,
-    borderColor: Colors.amber,
+    backgroundColor: Colors.tertiary,
+    borderColor: Colors.tertiary,
   },
   name: {
     ...Typography.body,

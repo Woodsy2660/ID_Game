@@ -5,27 +5,32 @@ import { Colors, Spacing, Radius } from '../../theme';
 interface Props {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'inverted' | 'outlined';
   disabled?: boolean;
   style?: ViewStyle;
 }
 
+/**
+ * Button — 4 variants matching the design system:
+ *   primary:  Gold bg, dark text (main CTA)
+ *   secondary: Outlined with border, white text
+ *   inverted: White bg, dark text
+ *   outlined: Transparent bg, border, muted text
+ */
 export function Button({ title, onPress, variant = 'primary', disabled, style }: Props) {
-  const isPrimary = variant === 'primary';
-
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,
-        isPrimary ? styles.primary : styles.secondary,
+        variantStyles[variant],
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
         style,
       ]}
     >
-      <Text style={[styles.label, isPrimary ? styles.labelPrimary : styles.labelSecondary]}>
+      <Text style={[styles.label, labelStyles[variant]]}>
         {title}
       </Text>
     </Pressable>
@@ -40,28 +45,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing['2xl'],
   },
-  primary: {
-    backgroundColor: Colors.amber,
-    // Bottom shadow for tactile depth
-    shadowColor: Colors.amberDim,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
-  secondary: {
-    backgroundColor: Colors.raised,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.surface,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
   pressed: {
     transform: [{ translateY: 2 }],
-    shadowOffset: { width: 0, height: 2 },
+    opacity: 0.9,
   },
   disabled: {
     opacity: 0.35,
@@ -72,10 +58,43 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  labelPrimary: {
+});
+
+const variantStyles = StyleSheet.create({
+  primary: {
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primaryDim,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  secondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  inverted: {
+    backgroundColor: Colors.white,
+  },
+  outlined: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: Colors.muted,
+  },
+});
+
+const labelStyles = StyleSheet.create({
+  primary: {
     color: Colors.black,
   },
-  labelSecondary: {
+  secondary: {
     color: Colors.white,
+  },
+  inverted: {
+    color: Colors.black,
+  },
+  outlined: {
+    color: Colors.muted,
   },
 });

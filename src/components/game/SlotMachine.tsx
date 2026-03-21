@@ -4,11 +4,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withDelay,
   withSequence,
-  withRepeat,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import { Colors, Spacing, Typography, Radius } from '../../theme';
 import questionBank from '../../data/questionBank.json';
@@ -21,28 +18,32 @@ interface Props {
 }
 
 /**
- * Slot machine animation: cycles through random question texts rapidly,
- * then decelerates and lands on the real question.
+ * Roulette-style slot machine: cycles through random question texts rapidly,
+ * decelerates, and lands on the real question with a gold highlight.
  */
 export function SlotMachine({ questionId, onRevealed }: Props) {
   const [displayText, setDisplayText] = useState('');
   const [isRevealed, setIsRevealed] = useState(false);
   const containerOpacity = useSharedValue(0);
   const textScale = useSharedValue(1);
+  const borderOpacity = useSharedValue(0.15);
 
   const realQuestion = questionBank.find((q) => q.id === questionId);
 
   useEffect(() => {
     containerOpacity.value = withTiming(1, { duration: 300 });
 
-    // Cycle through random questions, slowing down
-    const totalDuration = 2500; // total animation time
-    const steps = 18;
+    // Pulse the scanline while spinning
+    borderOpacity.value = withSequence(
+      withTiming(0.4, { duration: 600 }),
+      withTiming(0.15, { duration: 600 })
+    );
+
     let step = 0;
+    const steps = 18;
 
     const tick = () => {
       if (step < steps) {
-        // Pick a random question that isn't the real one
         const pool = questionBank.filter((q) => q.id !== questionId);
         const random = pool[Math.floor(Math.random() * pool.length)];
         setDisplayText(random.text);
@@ -63,7 +64,6 @@ export function SlotMachine({ questionId, onRevealed }: Props) {
       }
     };
 
-    // Start after a brief pause
     setTimeout(tick, 400);
   }, [questionId]);
 
@@ -73,6 +73,10 @@ export function SlotMachine({ questionId, onRevealed }: Props) {
 
   const textStyle = useAnimatedStyle(() => ({
     transform: [{ scale: textScale.value }],
+  }));
+
+  const scanlineStyle = useAnimatedStyle(() => ({
+    opacity: borderOpacity.value,
   }));
 
   return (
@@ -85,7 +89,7 @@ export function SlotMachine({ questionId, onRevealed }: Props) {
         </Animated.View>
       </View>
       {!isRevealed && (
-        <View style={styles.scanline} />
+        <Animated.View style={[styles.scanline, scanlineStyle]} />
       )}
     </Animated.View>
   );
@@ -107,7 +111,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardRevealed: {
-    borderColor: Colors.amber,
+    borderColor: Colors.primary,
     backgroundColor: Colors.raised,
   },
   questionText: {
@@ -124,8 +128,7 @@ const styles = StyleSheet.create({
     right: 12,
     top: '50%',
     height: 2,
-    backgroundColor: Colors.amber,
-    opacity: 0.3,
+    backgroundColor: Colors.primary,
     borderRadius: 1,
   },
 });

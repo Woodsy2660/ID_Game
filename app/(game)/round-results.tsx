@@ -14,7 +14,6 @@ import { Spacing } from '../../src/theme';
  */
 export default function RoundResultsScreen() {
   const router = useRouter();
-  const questionId = useGameStore((s) => s.questionId);
   const qmPlayerId = useGameStore((s) => s.qmPlayerId);
   const players = useGameStore((s) => s.players);
   const roundResults = useGameStore((s) => s.roundResults);
