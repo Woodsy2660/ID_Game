@@ -7,11 +7,11 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  Easing,
 } from 'react-native-reanimated';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { ResultSplash } from '../../src/components/game/ResultSplash';
 import { useGameStore } from '../../src/store/gameStore';
+import { useGameChannel } from '../../src/hooks/useGameChannel';
 import { Colors, Spacing, Typography, Radius } from '../../src/theme';
 import questionBank from '../../src/data/questionBank.json';
 
@@ -23,14 +23,15 @@ const AUTO_ADVANCE_MS = 3000;
  * QM view:       ResultSplash showing every player's correct/wrong result.
  * Answerer view: Personal full-screen correct (green) or wrong (red) splash.
  *
- * Both views auto-advance to leaderboard after AUTO_ADVANCE_MS so everyone
- * arrives at the same time regardless of when they submitted.
+ * After AUTO_ADVANCE_MS the first device to fire broadcasts leaderboard:ready
+ * so everyone navigates to the leaderboard at the same time.
  *
  * State machine: round_results → leaderboard
  */
 export default function RoundResultsScreen() {
   const router = useRouter();
   const isQM = useGameStore((s) => s.isQM);
+  const roomCode = useGameStore((s) => s.roomCode);
   const players = useGameStore((s) => s.players);
   const qmPlayerId = useGameStore((s) => s.qmPlayerId);
   const localPlayerId = useGameStore((s) => s.localPlayerId);
@@ -43,16 +44,36 @@ export default function RoundResultsScreen() {
   const isCorrect = myAnswer?.isCorrect ?? false;
   const question = questionBank.find((q) => q.id === latestResult?.questionId);
 
-  // Prevent double-navigation if component re-renders
+  // Guard against double-navigation
   const transitionedRef = useRef(false);
+  // Holds broadcastLeaderboardReady after useGameChannel initialises it
+  const broadcastLeaderboardReadyRef = useRef<(() => Promise<void>) | null>(null);
 
+  /**
+   * Navigate to leaderboard.
+   * Called from the 3-second timer AND from the onLeaderboardReady broadcast handler.
+   * Whichever fires first wins; transitionedRef blocks the duplicate.
+   */
+  const navigateToLeaderboard = () => {
+    if (transitionedRef.current) return;
+    transitionedRef.current = true;
+    // Tell other devices it's time to go (fire-and-forget)
+    broadcastLeaderboardReadyRef.current?.();
+    advancePhase(); // round_results → leaderboard
+    router.replace('/(game)/leaderboard');
+  };
+
+  const { broadcastLeaderboardReady } = useGameChannel(roomCode ?? '', {
+    onLeaderboardReady: navigateToLeaderboard,
+  });
+  // Assign after useGameChannel so navigateToLeaderboard can call it via ref
+  broadcastLeaderboardReadyRef.current = broadcastLeaderboardReady;
+
+  // Auto-advance after 3 seconds. All devices start this timer when they arrive
+  // on this screen (within broadcast latency of each other). The leaderboard:ready
+  // broadcast keeps the straggler in sync if one device's timer fires slightly later.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (transitionedRef.current) return;
-      transitionedRef.current = true;
-      advancePhase(); // → leaderboard
-      router.replace('/(game)/leaderboard');
-    }, AUTO_ADVANCE_MS);
+    const timer = setTimeout(navigateToLeaderboard, AUTO_ADVANCE_MS);
     return () => clearTimeout(timer);
   }, []);
 
@@ -91,7 +112,7 @@ export default function RoundResultsScreen() {
   );
 }
 
-// Separate component so animation hooks run cleanly
+// Separate component so animation hooks always run at the top level
 function AnswererResultView({
   isCorrect,
   questionText,

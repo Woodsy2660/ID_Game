@@ -12,11 +12,15 @@ interface GameChannelHandlers {
   onAnswerSubmitted?: (payload: AnswerSubmittedPayload) => void
   onRoundStarted?: (payload: RoundStartedPayload) => void
   onQMReady?: () => void
+  onResultsReady?: () => void
+  onLeaderboardReady?: () => void
 }
 
 interface GameChannelReturn {
   broadcastAnswer: (payload: AnswerSubmittedPayload) => Promise<void>
   broadcastQMReady: () => Promise<void>
+  broadcastResultsReady: () => Promise<void>
+  broadcastLeaderboardReady: () => Promise<void>
 }
 
 /**
@@ -52,6 +56,12 @@ export function useGameChannel(
       .on('broadcast', { event: 'qm:ready' }, () => {
         handlersRef.current.onQMReady?.()
       })
+      .on('broadcast', { event: 'results:ready' }, () => {
+        handlersRef.current.onResultsReady?.()
+      })
+      .on('broadcast', { event: 'leaderboard:ready' }, () => {
+        handlersRef.current.onLeaderboardReady?.()
+      })
       .subscribe()
 
     channelRef.current = channel
@@ -78,5 +88,21 @@ export function useGameChannel(
     })
   }
 
-  return { broadcastAnswer, broadcastQMReady }
+  const broadcastResultsReady = async (): Promise<void> => {
+    await channelRef.current?.send({
+      type: 'broadcast',
+      event: 'results:ready',
+      payload: {},
+    })
+  }
+
+  const broadcastLeaderboardReady = async (): Promise<void> => {
+    await channelRef.current?.send({
+      type: 'broadcast',
+      event: 'leaderboard:ready',
+      payload: {},
+    })
+  }
+
+  return { broadcastAnswer, broadcastQMReady, broadcastResultsReady, broadcastLeaderboardReady }
 }
