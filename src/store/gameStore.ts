@@ -58,6 +58,7 @@ interface GameActions {
   startRound: () => void;
   setNextRound: (payload: RoundStartedPayload) => void;
   submitAnswer: (playerId: string, guessedQuestionId: number) => void;
+  syncSubmissions: (submissions: Record<string, number>) => void;
   allAnswered: () => boolean;
   computeResults: () => RoundAnswer[];
   nextRound: () => void;
@@ -165,6 +166,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set((state) => ({
       submissions: { ...state.submissions, [playerId]: guessedQuestionId },
     }));
+  },
+
+  // Replace local submissions with the authoritative complete set from the results:ready broadcast.
+  // Ensures all devices compute results from identical data regardless of which individual
+  // answer:submitted broadcasts they may have missed.
+  syncSubmissions: (submissions: Record<string, number>) => {
+    set({ submissions });
   },
 
   // Check if all non-QM players have answered

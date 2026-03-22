@@ -8,18 +8,22 @@ export interface AnswerSubmittedPayload {
   guessedQuestionId: number
 }
 
+export interface ResultsReadyPayload {
+  submissions: Record<string, number>  // complete authoritative map: playerId → guessedQuestionId
+}
+
 interface GameChannelHandlers {
   onAnswerSubmitted?: (payload: AnswerSubmittedPayload) => void
   onRoundStarted?: (payload: RoundStartedPayload) => void
   onQMReady?: () => void
-  onResultsReady?: () => void
+  onResultsReady?: (payload: ResultsReadyPayload) => void
   onLeaderboardReady?: () => void
 }
 
 interface GameChannelReturn {
   broadcastAnswer: (payload: AnswerSubmittedPayload) => Promise<void>
   broadcastQMReady: () => Promise<void>
-  broadcastResultsReady: () => Promise<void>
+  broadcastResultsReady: (submissions: Record<string, number>) => Promise<void>
   broadcastLeaderboardReady: () => Promise<void>
 }
 
@@ -56,8 +60,8 @@ export function useGameChannel(
       .on('broadcast', { event: 'qm:ready' }, () => {
         handlersRef.current.onQMReady?.()
       })
-      .on('broadcast', { event: 'results:ready' }, () => {
-        handlersRef.current.onResultsReady?.()
+      .on('broadcast', { event: 'results:ready' }, (event) => {
+        handlersRef.current.onResultsReady?.(event.payload as ResultsReadyPayload)
       })
       .on('broadcast', { event: 'leaderboard:ready' }, () => {
         handlersRef.current.onLeaderboardReady?.()
@@ -88,11 +92,11 @@ export function useGameChannel(
     })
   }
 
-  const broadcastResultsReady = async (): Promise<void> => {
+  const broadcastResultsReady = async (submissions: Record<string, number>): Promise<void> => {
     await channelRef.current?.send({
       type: 'broadcast',
       event: 'results:ready',
-      payload: {},
+      payload: { submissions } satisfies ResultsReadyPayload,
     })
   }
 

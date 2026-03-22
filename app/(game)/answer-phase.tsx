@@ -37,6 +37,7 @@ export default function AnswerPhaseScreen() {
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const submissions = useGameStore((s) => s.submissions);
   const submitAnswer = useGameStore((s) => s.submitAnswer);
+  const syncSubmissions = useGameStore((s) => s.syncSubmissions);
   const computeResults = useGameStore((s) => s.computeResults);
   const advancePhase = useGameStore((s) => s.advancePhase);
 
@@ -51,7 +52,7 @@ export default function AnswerPhaseScreen() {
   // Guard against duplicate transitions across all paths (local, broadcast, onResultsReady)
   const transitionedRef = useRef(false);
   // Holds the broadcast function after useGameChannel sets it up — used by navigateToResults
-  const broadcastResultsReadyRef = useRef<(() => Promise<void>) | null>(null);
+  const broadcastResultsReadyRef = useRef<((submissions: Record<string, number>) => Promise<void>) | null>(null);
 
   /**
    * Single entry point for transitioning to round-results.
@@ -63,8 +64,9 @@ export default function AnswerPhaseScreen() {
   const navigateToResults = () => {
     if (transitionedRef.current) return;
     transitionedRef.current = true;
-    // Tell all other clients to transition too (fire-and-forget, errors are non-fatal)
-    broadcastResultsReadyRef.current?.();
+    // Broadcast the complete submissions map so all devices compute from identical data
+    const authoritative = useGameStore.getState().submissions;
+    broadcastResultsReadyRef.current?.(authoritative);
     // Compute results synchronously before mounting round-results so the store is ready
     computeResults();
     advancePhase(); // answer_phase → round_results
@@ -79,8 +81,12 @@ export default function AnswerPhaseScreen() {
         navigateToResults();
       }
     },
-    // Another device already detected all-answered and broadcast — follow them
-    onResultsReady: navigateToResults,
+    // Another device detected all-answered first and broadcast the authoritative submissions.
+    // Sync them here so this device computes results from identical data, then navigate.
+    onResultsReady: ({ submissions: authoritative }) => {
+      syncSubmissions(authoritative);
+      navigateToResults();
+    },
   });
   // Assign after useGameChannel so navigateToResults can call it via ref
   broadcastResultsReadyRef.current = broadcastResultsReady;
