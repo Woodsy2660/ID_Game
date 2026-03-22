@@ -15,12 +15,15 @@ import { usePlayerStore } from '../../src/stores/playerStore'
 import { Button } from '../../src/components/ui/Button'
 import { Logo } from '../../src/components/ui/Logo'
 import { Colors, Spacing, Typography, Radius } from '../../src/theme'
+import { useOnboarding } from '../../src/hooks/useOnboarding'
+import { OnboardingModal } from '../../src/components/onboarding/OnboardingModal'
 
 export default function HomeScreen() {
   const [name, setName] = useState('')
   const router = useRouter()
   const { user, authError, setDisplayName } = useAuthContext()
   const setPlayer = usePlayerStore((s) => s.setPlayer)
+  const onboarding = useOnboarding()
 
   const trimmed = name.trim()
   const isValid = trimmed.length >= 2 && !!user
@@ -40,57 +43,63 @@ export default function HomeScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.inner}>
+    <>
+      <OnboardingModal {...onboarding} />
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.inner}>
 
-          <View style={styles.logoSection}>
-            <Logo size="large" showText />
-            <Text style={styles.tagline}>Who knows who best?</Text>
-          </View>
-
-          <View style={styles.form}>
-            <Text style={styles.inputLabel}>Your name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
-              placeholderTextColor={Colors.muted}
-              value={name}
-              onChangeText={setName}
-              maxLength={20}
-              autoFocus
-              returnKeyType="done"
-            />
-
-            {authError ? (
-              <Text style={styles.authError}>
-                Could not connect — check Anonymous sign-in is enabled.
-              </Text>
-            ) : null}
-
-            <View style={styles.buttons}>
-              <Button title="Create Room" onPress={handleCreateRoom} disabled={!isValid} />
-              <Button
-                title="Join Room"
-                onPress={handleJoinRoom}
-                variant="secondary"
-                disabled={!isValid}
-              />
+            <View style={styles.logoSection}>
+              <Logo size="large" showText />
+              <Text style={styles.tagline}>Who knows who best?</Text>
             </View>
+
+            <View style={styles.form}>
+              <Text style={styles.inputLabel}>Your name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your name"
+                placeholderTextColor={Colors.muted}
+                value={name}
+                onChangeText={setName}
+                maxLength={20}
+                autoFocus
+                returnKeyType="done"
+              />
+
+              {authError ? (
+                <Text style={styles.authError}>
+                  Could not connect — check Anonymous sign-in is enabled.
+                </Text>
+              ) : null}
+
+              <View style={styles.buttons}>
+                <Button title="Create Room" onPress={handleCreateRoom} disabled={!isValid} />
+                <Button
+                  title="Join Room"
+                  onPress={handleJoinRoom}
+                  variant="secondary"
+                  disabled={!isValid}
+                />
+                <TouchableOpacity onPress={onboarding.open} style={styles.howToPlay}>
+                  <Text style={styles.howToPlayText}>How to play</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {__DEV__ && (
+              <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
+                <Text style={styles.devLinkText}>⚙ Dev Mode</Text>
+              </TouchableOpacity>
+            )}
+
           </View>
-
-          {__DEV__ && (
-            <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
-              <Text style={styles.devLinkText}>⚙ Dev Mode</Text>
-            </TouchableOpacity>
-          )}
-
-        </View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </>
   )
 }
 
@@ -138,6 +147,16 @@ const styles = StyleSheet.create({
   buttons: {
     gap: Spacing.sm,
     marginTop: Spacing.sm,
+  },
+  howToPlay: {
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  howToPlayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.muted,
+    letterSpacing: 0.3,
   },
   authError: {
     ...Typography.body,
