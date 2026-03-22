@@ -182,9 +182,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     return answerers.every((p) => p.id in submissions);
   },
 
-  // Compute results for the current round
+  // Compute results for the current round.
+  // Idempotent: if this round has already been scored, returns early to prevent
+  // double-counting points when multiple code paths call computeResults().
   computeResults: () => {
     const { players, qmPlayerId, questionId, submissions, scores, currentRound, roundResults } = get();
+
+    if (roundResults.some((r) => r.roundNumber === currentRound)) return [];
     const answers: RoundAnswer[] = players
       .filter((p) => p.id !== qmPlayerId)
       .map((p) => ({

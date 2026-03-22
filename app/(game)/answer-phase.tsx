@@ -27,7 +27,6 @@ import questionBank from '../../src/data/questionBank.json';
  */
 export default function AnswerPhaseScreen() {
   const router = useRouter();
-  const isQM = useGameStore((s) => s.isQM);
   const roomCode = useGameStore((s) => s.roomCode);
   const roundId = useGameStore((s) => s.roundId);
   const questionId = useGameStore((s) => s.questionId);
@@ -130,28 +129,6 @@ export default function AnswerPhaseScreen() {
     }
   }, [submittedCount]);
 
-  // ─── QM View — sees the question and watches submissions come in ──────────
-  // QM navigates to round-results via onAnswerSubmitted or onResultsReady above
-  if (isQM()) {
-    return (
-      <ScreenContainer>
-        <View style={styles.qmContainer}>
-          <SecretQuestionCard
-            questionText={question?.text ?? ''}
-            qmName={qmPlayer?.displayName ?? ''}
-          />
-          <View style={styles.trackerSection}>
-            <SubmissionTracker
-              submitted={submittedCount}
-              total={answerers.length}
-              playerNames={answerers.map((p) => p.displayName)}
-            />
-          </View>
-        </View>
-      </ScreenContainer>
-    );
-  }
-
   // ─── Answerer waiting view — shown after submitting until everyone is done ─
   if (hasSubmitted) {
     return (
@@ -205,13 +182,6 @@ export default function AnswerPhaseScreen() {
 }
 
 const styles = StyleSheet.create({
-  qmContainer: {
-    flex: 1,
-    gap: Spacing['3xl'],
-  },
-  trackerSection: {
-    marginTop: 'auto',
-  },
   answererContainer: {
     flex: 1,
   },
