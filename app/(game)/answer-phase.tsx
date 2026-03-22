@@ -119,7 +119,29 @@ export default function AnswerPhaseScreen() {
     );
   }
 
-  // Answerer View
+  // Answerer waiting view — shown after submitting until everyone is done
+  if (hasSubmitted) {
+    return (
+      <ScreenContainer>
+        <View style={styles.waitingContainer}>
+          <View style={styles.waitingTop}>
+            <View style={styles.lockedBadge}>
+              <Text style={styles.lockedBadgeText}>ANSWER LOCKED IN</Text>
+            </View>
+            <Text style={styles.waitingTitle}>Waiting for others...</Text>
+          </View>
+          <View style={styles.waitingTracker}>
+            <SubmissionTracker
+              submitted={submittedCount}
+              total={answerers.length}
+              playerNames={answerers.map((p) => p.displayName)}
+            />
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer>
       <View style={styles.answererContainer}>
@@ -133,23 +155,16 @@ export default function AnswerPhaseScreen() {
           visibleQuestionIds={visibleQuestionIds}
           onSelect={handleSelect}
           selectedId={selectedId}
-          disabled={hasSubmitted}
+          disabled={false}
         />
 
-        {!hasSubmitted ? (
-          <View style={styles.submitArea}>
-            <Button
-              title="Lock In Answer"
-              onPress={handleSubmit}
-              disabled={selectedId == null}
-            />
-          </View>
-        ) : (
-          <View style={styles.submittedArea}>
-            <View style={styles.submittedDot} />
-            <Text style={styles.submittedText}>Answer locked in! Waiting for others...</Text>
-          </View>
-        )}
+        <View style={styles.submitArea}>
+          <Button
+            title="Lock In Answer"
+            onPress={handleSubmit}
+            disabled={selectedId == null}
+          />
+        </View>
       </View>
     </ScreenContainer>
   );
@@ -178,20 +193,33 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
-  submittedArea: {
-    paddingVertical: Spacing.xl,
+  waitingContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: Spacing['2xl'],
+  },
+  waitingTop: {
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.lg,
   },
-  submittedDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  lockedBadge: {
     backgroundColor: Colors.tertiary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    borderRadius: 999,
   },
-  submittedText: {
-    ...Typography.body,
-    color: Colors.muted,
+  lockedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: Colors.black,
+    textTransform: 'uppercase',
+  },
+  waitingTitle: {
+    ...Typography.display,
     textAlign: 'center',
+  },
+  waitingTracker: {
+    gap: Spacing.md,
   },
 });

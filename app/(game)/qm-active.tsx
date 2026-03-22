@@ -10,6 +10,7 @@ import { SlotMachine } from '../../src/components/game/SlotMachine';
 import { SecretQuestionCard } from '../../src/components/game/SecretQuestionCard';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
+import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import questionBank from '../../src/data/questionBank.json';
 
@@ -40,13 +41,18 @@ export default function QMActiveScreen() {
     router.replace('/(game)/answer-phase');
   };
 
-  const { broadcastQMReady } = useGameChannel(roomCode ?? '', {
-    // Answerers receive this and navigate; QM sent it so they navigate directly in handleBeginGuessing.
-    onQMReady: navigateToAnswerPhase,
+  // QM does NOT listen for qm:ready — they navigate directly in handleBeginGuessing.
+  // Answerers listen and navigate when the server-side broadcast arrives.
+  useGameChannel(roomCode ?? '', {
+    onQMReady: isQM() ? undefined : navigateToAnswerPhase,
   });
 
   const handleBeginGuessing = async () => {
-    await broadcastQMReady();
+    // Broadcast via edge function so the server sends it — client-side channel.send()
+    // can fail silently if the WebSocket hasn't fully subscribed yet.
+    await supabase.functions.invoke('qm-ready', {
+      body: { room_code: roomCode },
+    });
     navigateToAnswerPhase();
   };
 
