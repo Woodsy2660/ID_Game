@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useRef } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
 import { usePlayerStore } from '../../src/stores/playerStore'
 import { useGameStore } from '../../src/store/gameStore'
 import { useRoom } from '../../src/hooks/useRoom'
-import { PlayerList } from '../../src/components/PlayerList'
-import { RoomCode } from '../../src/components/RoomCode'
-import { Button } from '../../src/components/Button'
+import { ScreenContainer } from '../../src/components/ui/ScreenContainer'
+import { Button } from '../../src/components/ui/Button'
+import { Card } from '../../src/components/ui/Card'
+import { Badge } from '../../src/components/ui/Badge'
+import { Colors, Spacing, Typography } from '../../src/theme'
 import type { GameStartPayload } from '../../src/store/types'
 
 export default function LobbyScreen() {
@@ -49,80 +51,125 @@ export default function LobbyScreen() {
   )
 
   const handleStartGame = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
     await supabase.functions.invoke('start-game', {
       body: { room_id },
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-      },
     })
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenContainer>
+
+      {/* Room code */}
       <View style={styles.header}>
-        <Text style={styles.label}>Room Code</Text>
-        {room_code ? <RoomCode code={room_code} /> : null}
-        <Text style={styles.hint}>Share this code with your friends</Text>
+        <Text style={styles.sectionLabel}>ROOM CODE</Text>
+        <Card highlighted style={styles.codeCard}>
+          <Text style={styles.roomCode}>{room_code}</Text>
+        </Card>
+        <Text style={styles.shareHint}>Share this code with your friends</Text>
       </View>
 
+      {/* Player list */}
       <View style={styles.body}>
-        <PlayerList
-          players={players}
-          currentPlayerId={player_id ?? ''}
-          hostId={players.find((p) => p.is_host)?.player_id}
-        />
+        <Text style={styles.sectionLabel}>
+          PLAYERS{players.length > 0 ? ` · ${players.length}` : ''}
+        </Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.playerList}>
+          {players.map((p) => {
+            const isYou = p.player_id === player_id
+            return (
+              <Card
+                key={p.player_id}
+                style={[styles.playerCard, isYou && styles.playerCardYou]}
+              >
+                <Text style={[styles.playerName, isYou && styles.playerNameYou]}>
+                  {p.display_name}{isYou ? ' (you)' : ''}
+                </Text>
+                {p.is_host && <Badge label="HOST" variant="primary" />}
+              </Card>
+            )
+          })}
+        </ScrollView>
       </View>
 
+      {/* Footer */}
       <View style={styles.footer}>
         {is_host ? (
-          <Button
-            label="Start Game"
-            onPress={handleStartGame}
-            disabled={players.length < 2}
-          />
+          <>
+            {players.length < 2 && (
+              <Text style={styles.waitingHint}>Need at least 2 players to start</Text>
+            )}
+            <Button
+              title="Start Game"
+              onPress={handleStartGame}
+              disabled={players.length < 2}
+            />
+          </>
         ) : (
-          <Text style={styles.waiting}>Waiting for host to start...</Text>
+          <Text style={styles.waitingText}>Waiting for host to start...</Text>
         )}
       </View>
-    </View>
+
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
-    gap: 4,
+    gap: Spacing.sm,
+    paddingBottom: Spacing['2xl'],
   },
-  label: {
-    fontSize: 12,
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
+  sectionLabel: {
+    ...Typography.label,
   },
-  hint: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 4,
+  codeCard: {
+    paddingHorizontal: Spacing['3xl'],
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  roomCode: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 8,
+  },
+  shareHint: {
+    ...Typography.body,
+    color: Colors.muted,
   },
   body: {
     flex: 1,
+    gap: Spacing.md,
+  },
+  playerList: {
+    gap: Spacing.sm,
+  },
+  playerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  playerCardYou: {
+    borderColor: Colors.tertiary,
+  },
+  playerName: {
+    ...Typography.body,
+  },
+  playerNameYou: {
+    color: Colors.tertiary,
   },
   footer: {
-    paddingTop: 16,
+    paddingTop: Spacing.lg,
+    gap: Spacing.sm,
   },
-  waiting: {
+  waitingHint: {
+    ...Typography.body,
+    color: Colors.muted,
     textAlign: 'center',
-    color: '#6B7280',
-    fontSize: 15,
+  },
+  waitingText: {
+    ...Typography.body,
+    color: Colors.muted,
+    textAlign: 'center',
   },
 })

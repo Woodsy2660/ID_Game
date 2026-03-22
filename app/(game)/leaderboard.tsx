@@ -57,10 +57,8 @@ export default function LeaderboardScreen() {
     }
 
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
     await supabase.functions.invoke('start-round', {
       body: { room_id },
-      headers: { Authorization: `Bearer ${session?.access_token}` },
     });
     // Navigation happens in the onRoundStarted handler above, not here,
     // so the host and all other clients transition simultaneously.

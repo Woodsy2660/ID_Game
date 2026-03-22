@@ -8,10 +8,13 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useAuthContext } from '../_layout'
 import { usePlayerStore } from '../../src/stores/playerStore'
-import { Button } from '../../src/components/Button'
+import { Button } from '../../src/components/ui/Button'
+import { Logo } from '../../src/components/ui/Logo'
+import { Colors, Spacing, Typography, Radius } from '../../src/theme'
 
 export default function HomeScreen() {
   const [name, setName] = useState('')
@@ -38,98 +41,114 @@ export default function HomeScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.keyboardView}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.inner}>
-        <Text style={styles.title}>ID Game</Text>
-        <Text style={styles.subtitle}>Who knows who best?</Text>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.inner}>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your name"
-          value={name}
-          onChangeText={setName}
-          maxLength={20}
-          autoFocus
-          returnKeyType="done"
-        />
+          <View style={styles.logoSection}>
+            <Logo size="large" showText />
+            <Text style={styles.tagline}>Who knows who best?</Text>
+          </View>
 
-        {authError ? (
-          <Text style={styles.authError}>
-            Could not connect to server: {authError}{'\n'}
-            Check that Anonymous sign-in is enabled in your Supabase project.
-          </Text>
-        ) : null}
+          <View style={styles.form}>
+            <Text style={styles.inputLabel}>Your name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your name"
+              placeholderTextColor={Colors.muted}
+              value={name}
+              onChangeText={setName}
+              maxLength={20}
+              autoFocus
+              returnKeyType="done"
+            />
 
-        <View style={styles.buttons}>
-          <Button label="Create Room" onPress={handleCreateRoom} disabled={!isValid} />
-          <View style={styles.gap} />
-          <Button label="Join Room" onPress={handleJoinRoom} disabled={!isValid} />
+            {authError ? (
+              <Text style={styles.authError}>
+                Could not connect — check Anonymous sign-in is enabled.
+              </Text>
+            ) : null}
+
+            <View style={styles.buttons}>
+              <Button title="Create Room" onPress={handleCreateRoom} disabled={!isValid} />
+              <Button
+                title="Join Room"
+                onPress={handleJoinRoom}
+                variant="secondary"
+                disabled={!isValid}
+              />
+            </View>
+          </View>
+
+          {__DEV__ && (
+            <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
+              <Text style={styles.devLinkText}>⚙ Dev Mode</Text>
+            </TouchableOpacity>
+          )}
+
         </View>
-
-        {__DEV__ && (
-          <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
-            <Text style={styles.devLinkText}>⚙ Dev Mode</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  keyboardView: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.black,
+  },
+  safe: {
+    flex: 1,
   },
   inner: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-    gap: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing['5xl'],
+    paddingBottom: Spacing['3xl'],
   },
-  title: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#1F2937',
+  logoSection: {
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  tagline: {
+    ...Typography.body,
+    color: Colors.muted,
     textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 16,
+  form: {
+    gap: Spacing.md,
+  },
+  inputLabel: {
+    ...Typography.label,
   },
   input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.lg,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1F2937',
+    fontWeight: '500',
+    color: Colors.white,
   },
   buttons: {
-    marginTop: 8,
-  },
-  gap: {
-    height: 12,
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
   },
   authError: {
-    fontSize: 13,
-    color: '#EF4444',
+    ...Typography.body,
+    color: Colors.error,
     textAlign: 'center',
-    lineHeight: 18,
   },
   devLink: {
     alignSelf: 'center',
-    marginTop: 8,
-    padding: 8,
+    padding: Spacing.sm,
   },
   devLinkText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...Typography.label,
   },
 })

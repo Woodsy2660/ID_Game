@@ -58,6 +58,7 @@ interface GameActions {
   startRound: () => void;
   setNextRound: (payload: RoundStartedPayload) => void;
   submitAnswer: (playerId: string, guessedQuestionId: number) => void;
+  syncSubmissions: (submissions: Record<string, number>) => void;
   allAnswered: () => boolean;
   computeResults: () => RoundAnswer[];
   nextRound: () => void;
@@ -167,6 +168,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }));
   },
 
+  // Replace local submissions with the authoritative complete set from the results:ready broadcast.
+  // Ensures all devices compute results from identical data regardless of which individual
+  // answer:submitted broadcasts they may have missed.
+  syncSubmissions: (submissions: Record<string, number>) => {
+    set({ submissions });
+  },
+
   // Check if all non-QM players have answered
   allAnswered: () => {
     const { players, qmPlayerId, submissions } = get();
@@ -174,9 +182,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     return answerers.every((p) => p.id in submissions);
   },
 
-  // Compute results for the current round
+  // Compute results for the current round.
+  // Idempotent: if this round has already been scored, returns early to prevent
+  // double-counting points when multiple code paths call computeResults().
   computeResults: () => {
     const { players, qmPlayerId, questionId, submissions, scores, currentRound, roundResults } = get();
+
+    if (roundResults.some((r) => r.roundNumber === currentRound)) return [];
     const answers: RoundAnswer[] = players
       .filter((p) => p.id !== qmPlayerId)
       .map((p) => ({
