@@ -3,8 +3,10 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
 import { usePlayerStore } from '../../src/stores/playerStore'
-import { RoomCode } from '../../src/components/RoomCode'
-import { Button } from '../../src/components/Button'
+import { ScreenContainer } from '../../src/components/ui/ScreenContainer'
+import { Button } from '../../src/components/ui/Button'
+import { Card } from '../../src/components/ui/Card'
+import { Colors, Spacing, Typography, Radius } from '../../src/theme'
 
 export default function CreateScreen() {
   const router = useRouter()
@@ -15,12 +17,8 @@ export default function CreateScreen() {
 
   const createRoom = async () => {
     setStatus('loading')
-    const { data: { session } } = await supabase.auth.getSession()
     const { data, error } = await supabase.functions.invoke('create-room', {
       body: { display_name },
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-      },
     })
     if (error || !data) {
       setErrorMsg(error?.message ?? 'Something went wrong.')
@@ -39,47 +37,68 @@ export default function CreateScreen() {
 
   if (status === 'loading') {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.label}>Creating your room...</Text>
-      </View>
+      <ScreenContainer centered>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Creating your room...</Text>
+      </ScreenContainer>
     )
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>{errorMsg}</Text>
-        <Button label="Try Again" onPress={createRoom} />
-      </View>
+      <ScreenContainer centered>
+        <Card style={styles.errorCard}>
+          <Text style={styles.errorText}>{errorMsg}</Text>
+          <Button title="Try Again" onPress={createRoom} />
+        </Card>
+      </ScreenContainer>
     )
   }
 
   return (
-    <View style={styles.center}>
-      <RoomCode code={roomCode} large />
-    </View>
+    <ScreenContainer centered>
+      <Text style={styles.successLabel}>YOUR ROOM CODE</Text>
+      <Card highlighted style={styles.codeCard}>
+        <Text style={styles.roomCode}>{roomCode}</Text>
+      </Card>
+      <Text style={styles.successHint}>Taking you to the lobby...</Text>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: 'center',
+  loadingText: {
+    ...Typography.body,
+    color: Colors.muted,
+    marginTop: Spacing.lg,
+  },
+  errorCard: {
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    gap: 20,
-    padding: 32,
+    gap: Spacing.lg,
+    width: '100%',
   },
-  label: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 12,
-  },
-  error: {
-    fontSize: 15,
-    color: '#EF4444',
+  errorText: {
+    ...Typography.body,
+    color: Colors.error,
     textAlign: 'center',
-    marginBottom: 8,
+  },
+  successLabel: {
+    ...Typography.label,
+    marginBottom: Spacing.md,
+  },
+  codeCard: {
+    alignItems: 'center',
+    paddingHorizontal: Spacing['3xl'],
+  },
+  roomCode: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 8,
+  },
+  successHint: {
+    ...Typography.body,
+    color: Colors.muted,
+    marginTop: Spacing.lg,
   },
 })

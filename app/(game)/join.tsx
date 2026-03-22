@@ -7,10 +7,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
 import { usePlayerStore } from '../../src/stores/playerStore'
-import { Button } from '../../src/components/Button'
+import { Button } from '../../src/components/ui/Button'
+import { Colors, Spacing, Typography, Radius } from '../../src/theme'
 
 export default function JoinScreen() {
   const router = useRouter()
@@ -22,19 +24,17 @@ export default function JoinScreen() {
   const handleJoin = async (roomCode: string) => {
     setLoading(true)
     setErrorMsg('')
-    const { data: { session } } = await supabase.auth.getSession()
     const { data, error } = await supabase.functions.invoke('join-room', {
       body: { room_code: roomCode, display_name },
-      headers: { Authorization: `Bearer ${session?.access_token}` },
     })
     setLoading(false)
 
     if (error) {
       const body = error.context ? await error.context.json().catch(() => null) : null
-      const code = body?.error
-      if (code === 'ROOM_NOT_FOUND') {
+      const errorCode = body?.error
+      if (errorCode === 'ROOM_NOT_FOUND') {
         setErrorMsg('Room not found. Check the code and try again.')
-      } else if (code === 'ROOM_NOT_IN_LOBBY') {
+      } else if (errorCode === 'ROOM_NOT_IN_LOBBY') {
         setErrorMsg('This game has already started.')
       } else {
         setErrorMsg('Something went wrong. Try again.')
@@ -54,72 +54,97 @@ export default function JoinScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.keyboardView}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.inner}>
-        <Text style={styles.title}>Join a Room</Text>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.inner}>
 
-        <TextInput
-          style={styles.input}
-          placeholder="ENTER CODE"
-          value={code}
-          onChangeText={handleChangeCode}
-          maxLength={6}
-          autoCapitalize="characters"
-          autoFocus
-          keyboardType="default"
-          returnKeyType="go"
-          onSubmitEditing={() => code.length === 6 && handleJoin(code)}
-        />
+          <View style={styles.header}>
+            <Text style={styles.title}>Join a Room</Text>
+            <Text style={styles.subtitle}>Enter the 6-character room code</Text>
+          </View>
 
-        {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+          <View style={styles.inputSection}>
+            <TextInput
+              style={[styles.input, !!errorMsg && styles.inputError]}
+              placeholder="······"
+              placeholderTextColor={Colors.border}
+              value={code}
+              onChangeText={handleChangeCode}
+              maxLength={6}
+              autoCapitalize="characters"
+              autoFocus
+              keyboardType="default"
+              returnKeyType="go"
+              onSubmitEditing={() => code.length === 6 && handleJoin(code)}
+            />
 
-        <Button
-          label="Join"
-          onPress={() => handleJoin(code)}
-          disabled={code.length !== 6}
-          loading={loading}
-        />
-      </View>
+            {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+
+            <Button
+              title="Join"
+              onPress={() => handleJoin(code)}
+              disabled={code.length !== 6 || loading}
+            />
+          </View>
+
+        </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  keyboardView: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.black,
+  },
+  safe: {
+    flex: 1,
   },
   inner: {
     flex: 1,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing['5xl'],
+    paddingBottom: Spacing['3xl'],
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    gap: 16,
+    gap: Spacing['3xl'],
+  },
+  header: {
+    gap: Spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1F2937',
+    ...Typography.display,
     textAlign: 'center',
-    marginBottom: 8,
+  },
+  subtitle: {
+    ...Typography.body,
+    color: Colors.muted,
+    textAlign: 'center',
+  },
+  inputSection: {
+    gap: Spacing.md,
   },
   input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: 8,
-    color: '#1F2937',
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 18,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: 10,
+    color: Colors.primary,
     textAlign: 'center',
   },
+  inputError: {
+    borderColor: Colors.error,
+  },
   error: {
-    fontSize: 14,
-    color: '#EF4444',
+    ...Typography.body,
+    color: Colors.error,
     textAlign: 'center',
   },
 })

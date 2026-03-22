@@ -8,7 +8,6 @@
     "platforms": ["ios", "android", "web"],
     "newArchEnabled": true,
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#121212"
     },
@@ -17,14 +16,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#121212"
       }
     },
     "web": {
       "bundler": "metro",
-      "output": "single",
-      "favicon": "./assets/icon.png"
+      "output": "single"
     },
     "plugins": [
       "expo-router",

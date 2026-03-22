@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    return new Response(JSON.stringify({ error: 'Unauthorized, no auth header' }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
 
   const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
   if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    return new Response(JSON.stringify({ error: 'Unauthorized, user fetch failed', details: authError }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
