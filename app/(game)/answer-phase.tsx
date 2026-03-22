@@ -11,6 +11,7 @@ import { useGameChannel } from '../../src/hooks/useGameChannel';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import questionBank from '../../src/data/questionBank.json';
+import { startMockSubmissions, stopMockSubmissions } from '../../src/services/mockSubmissions';
 
 /**
  * Answer Phase screen — splits into two views:
@@ -67,6 +68,14 @@ export default function AnswerPhaseScreen() {
       submitAnswer(playerId, guessedQuestionId);
     },
   });
+
+  // In dev mode (no real Supabase), simulate other players answering
+  useEffect(() => {
+    if (isQM() && roomCode?.startsWith('DEV')) {
+      startMockSubmissions();
+      return () => stopMockSubmissions();
+    }
+  }, []);
 
   // Transition when all non-QM players have answered (fires for both QM and answerers)
   useEffect(() => {

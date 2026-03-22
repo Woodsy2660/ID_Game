@@ -29,11 +29,13 @@ export default function LeaderboardScreen() {
   const currentRound = useGameStore((s) => s.currentRound);
   const roomCode = useGameStore((s) => s.roomCode);
   const setNextRound = useGameStore((s) => s.setNextRound);
+  const nextRound = useGameStore((s) => s.nextRound);
   const getNextQMPlayer = useGameStore((s) => s.getNextQMPlayer);
 
   const { room_id } = usePlayerStore();
+  const isDevMode = roomCode?.startsWith('DEV');
 
-  const isHost = players.find((p) => p.id === localPlayerId)?.isHost ?? false;
+  const isHost = isDevMode || (players.find((p) => p.id === localPlayerId)?.isHost ?? false);
 
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +49,13 @@ export default function LeaderboardScreen() {
   });
 
   const handleNextRound = async () => {
+    // Dev mode: skip Supabase, advance locally
+    if (isDevMode) {
+      nextRound();
+      router.replace('/(game)/round-start');
+      return;
+    }
+
     setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     await supabase.functions.invoke('start-round', {

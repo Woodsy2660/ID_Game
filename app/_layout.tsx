@@ -31,7 +31,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (loading) return
     const inAuth = segments[0] === '(auth)'
-    if (!session && !inAuth) {
+    const inDev = segments[0] === 'dev'
+    const inGame = segments[0] === '(game)'
+    // Allow dev and game routes to bypass auth (for local testing)
+    if (!session && !inAuth && !inDev && !inGame) {
       router.replace('/(auth)')
     }
   }, [session, loading, segments])

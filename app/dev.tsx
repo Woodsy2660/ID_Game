@@ -19,6 +19,7 @@ const MOCK_PLAYERS: Player[] = [
   { id: 'p2', displayName: 'Woodsy', isHost: false },
   { id: 'p3', displayName: 'Digby',  isHost: false },
   { id: 'p4', displayName: 'Luke',   isHost: false },
+  { id: 'p5', displayName: 'Rozza',  isHost: false },
 ];
 
 const LOCAL_PLAYER_ID = 'p1'; // Tyler is the host on this device
