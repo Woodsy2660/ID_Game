@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGameStore } from '../src/store/gameStore';
-import { Colors, Spacing, Typography, Radius } from '../src/theme';
+import { Colors, Spacing, Typography, Radius, Layout } from '../src/theme';
 import type { Player } from '../src/store/types';
 
 /**
@@ -97,25 +97,24 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Colors.black,
-    paddingTop: 60,
+    paddingTop: Layout.screenPaddingTop,
   },
   header: {
     alignItems: 'center',
-    paddingHorizontal: Spacing['3xl'],
+    paddingHorizontal: Layout.screenPaddingH,
     paddingBottom: Spacing['2xl'],
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: Spacing.xs,
   },
   devBadge: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...Typography.label,
     color: Colors.error,
     letterSpacing: 2,
     borderWidth: 1,
     borderColor: Colors.error,
-    borderRadius: 4,
-    paddingHorizontal: 6,
+    borderRadius: Radius.xs,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     marginBottom: Spacing.sm,
   },
@@ -124,8 +123,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   roomCode: {
-    fontSize: 28,
-    fontWeight: '800',
+    ...Typography.display,
     letterSpacing: 8,
     color: Colors.primary,
   },
@@ -139,8 +137,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   list: {
-    padding: Spacing['2xl'],
-    gap: Spacing.sm,
+    padding: Layout.screenPaddingH,
+    gap: Layout.listItemGap,
   },
   sectionLabel: {
     ...Typography.label,
@@ -190,22 +188,20 @@ const styles = StyleSheet.create({
   },
   badge: {
     backgroundColor: Colors.raised,
-    borderRadius: 4,
-    paddingHorizontal: 6,
+    borderRadius: Radius.xs,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
   },
   badgeYou: {
     backgroundColor: Colors.primaryMuted,
   },
   badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...Typography.label,
     color: Colors.muted,
-    letterSpacing: 1,
   },
   footer: {
-    padding: Spacing['2xl'],
-    paddingBottom: 40,
+    padding: Layout.screenPaddingH,
+    paddingBottom: Layout.screenPaddingBottom,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
@@ -219,7 +215,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   startButtonText: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '800',
     color: Colors.black,
     letterSpacing: 0.5,

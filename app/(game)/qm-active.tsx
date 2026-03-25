@@ -1,12 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import Animated, {
-  SlideInDown,
-} from 'react-native-reanimated';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { SlotMachine } from '../../src/components/game/SlotMachine';
-import { SecretQuestionCard } from '../../src/components/game/SecretQuestionCard';
 import { IDCard } from '../../src/components/game/IDCard';
 import { SubmissionTracker } from '../../src/components/game/SubmissionTracker';
 import { useGameStore } from '../../src/store/gameStore';
@@ -105,11 +101,10 @@ export default function QMActiveScreen() {
     setRevealed(true);
     if (isQM()) {
       const isDevMode = roomCode?.startsWith('DEV');
-      // Give QM 5 s to read their question, then auto-open guessing for everyone
+      // QM has already had 2.5s to read (built into SlotMachine).
+      // Short delay for compact transition to finish, then broadcast and show tracker.
       revealTimerRef.current = setTimeout(async () => {
         if (isDevMode) {
-          // Dev mode: skip Supabase edge function, just show tracker locally
-          // and auto-advance answerers via navigateToAnswerPhase after mock delay
           setShowTracker(true);
         } else {
           await supabase.functions.invoke('qm-ready', {
@@ -117,59 +112,68 @@ export default function QMActiveScreen() {
           });
           setShowTracker(true);
         }
-      }, 5000);
+      }, 1500);
     }
   };
 
   // ─── QM view ──────────────────────────────────────────────────────────────
   if (isQM()) {
+    // Pre-reveal: full-screen spinner with shhh overlay
+    if (!revealed) {
+      return (
+        <ScreenContainer>
+          <View style={styles.container}>
+            <SlotMachine
+              questionId={questionId!}
+              visibleQuestionIds={visibleQuestionIds}
+              onRevealed={handleRevealed}
+            />
+          </View>
+        </ScreenContainer>
+      );
+    }
+
+    // Post-reveal: question card pinned at top, arrange IDs + tracker below
     return (
       <ScreenContainer>
-        <View style={styles.container}>
-          {!revealed && (
-            <Text style={styles.label}>YOUR SECRET QUESTION</Text>
-          )}
-
-          <View style={styles.centerSection}>
-            {!revealed ? (
-              <SlotMachine
-                questionId={questionId!}
-                visibleQuestionIds={visibleQuestionIds}
-                onRevealed={handleRevealed}
-              />
-            ) : (
-              <Animated.View entering={SlideInDown} style={styles.arrangeWrapper}>
-                <SecretQuestionCard
-                  questionText={question?.text ?? ''}
-                  qmName={qmPlayer?.displayName ?? ''}
-                />
-
-                {showTracker && (
-                  <Animated.View entering={SlideInDown.delay(200)} style={styles.arrangeContainer}>
-                    <Text style={styles.arrangeTitle}>ARRANGE IDs</Text>
-                    <View style={styles.cardList}>
-                      <Text style={styles.rankLabel}>MOST LIKELY</Text>
-                      <IDCard delay={200} />
-                      <IDCard delay={350} />
-                      <IDCard delay={500} />
-                      <Text style={styles.rankLabel}>LEAST LIKELY</Text>
-                    </View>
-                  </Animated.View>
-                )}
-              </Animated.View>
-            )}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Question card at top */}
+          <View style={styles.questionTop}>
+            <View style={styles.questionCard}>
+              <Text style={styles.questionLabel}>YOUR SECRET QUESTION</Text>
+              <Text style={styles.questionText}>{question?.text ?? ''}</Text>
+            </View>
           </View>
 
+          {/* Arrange IDs */}
           {showTracker && (
-            <Animated.View entering={SlideInDown.delay(400)} style={styles.trackerArea}>
+            <View style={styles.arrangeContainer}>
+              <Text style={styles.arrangeTitle}>ARRANGE IDs</Text>
+              <View style={styles.cardList}>
+                <Text style={styles.rankLabel}>MOST LIKELY</Text>
+                <IDCard delay={0} />
+                <IDCard delay={100} />
+                <IDCard delay={200} />
+                <Text style={styles.rankLabel}>LEAST LIKELY</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Submission tracker */}
+          {showTracker && (
+            <View style={styles.trackerArea}>
               <SubmissionTracker
                 submitted={submittedCount}
                 total={answerers.length}
                 playerNames={answerers.map((p) => p.displayName)}
               />
-            </Animated.View>
+            </View>
           )}
-        </View>
+        </ScrollView>
       </ScreenContainer>
     );
   }
@@ -204,20 +208,32 @@ const styles = StyleSheet.create({
     gap: Spacing.xl,
     justifyContent: 'center',
   },
-  label: {
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Spacing['2xl'],
+    gap: Spacing.xl,
+  },
+  questionTop: {
+    marginBottom: Spacing.sm,
+  },
+  questionCard: {
+    backgroundColor: Colors.raised,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: 16,
+    padding: Spacing['2xl'],
+    gap: Spacing.sm,
+  },
+  questionLabel: {
     ...Typography.label,
     color: Colors.primary,
-    textAlign: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.xs,
   },
-  centerSection: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: Spacing.xl,
-  },
-  arrangeWrapper: {
-    gap: Spacing.xl,
-    width: '100%',
+  questionText: {
+    ...Typography.display,
+    color: Colors.white,
   },
   arrangeContainer: {
     alignItems: 'center',

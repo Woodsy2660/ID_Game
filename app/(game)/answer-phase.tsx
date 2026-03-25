@@ -223,11 +223,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   lockedBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    ...Typography.label,
     color: Colors.black,
-    textTransform: 'uppercase',
   },
   waitingTitle: {
     ...Typography.display,

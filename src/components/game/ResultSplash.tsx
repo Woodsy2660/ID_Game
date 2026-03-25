@@ -142,8 +142,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   guessText: {
+    ...Typography.helper,
     fontSize: 12,
-    color: Colors.muted,
   },
   resultBadge: {
     ...Typography.heading,

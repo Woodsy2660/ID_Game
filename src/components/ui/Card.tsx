@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Spacing, Radius } from '../../theme';
+import { Colors, Radius, Layout } from '../../theme';
 
 interface Props {
   children: React.ReactNode;
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.lg,
-    padding: Spacing.xl,
+    padding: Layout.cardPadding,
   },
   highlighted: {
     borderColor: Colors.primary,

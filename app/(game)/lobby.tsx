@@ -9,7 +9,7 @@ import { ScreenContainer } from '../../src/components/ui/ScreenContainer'
 import { Button } from '../../src/components/ui/Button'
 import { Card } from '../../src/components/ui/Card'
 import { Badge } from '../../src/components/ui/Badge'
-import { Colors, Spacing, Typography } from '../../src/theme'
+import { Colors, Spacing, Typography, Layout } from '../../src/theme'
 import type { GameStartPayload } from '../../src/store/types'
 
 export default function LobbyScreen() {
@@ -79,7 +79,7 @@ export default function LobbyScreen() {
             return (
               <Card
                 key={p.player_id}
-                style={[styles.playerCard, isYou && styles.playerCardYou]}
+                style={isYou ? { ...styles.playerCard, ...styles.playerCardYou } : styles.playerCard}
               >
                 <Text style={[styles.playerName, isYou && styles.playerNameYou]}>
                   {p.display_name}{isYou ? ' (you)' : ''}
@@ -117,13 +117,13 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingBottom: Spacing['2xl'],
+    paddingBottom: Spacing.lg,
   },
   sectionLabel: {
     ...Typography.label,
   },
   codeCard: {
-    paddingHorizontal: Spacing['3xl'],
+    paddingHorizontal: Spacing['2xl'],
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },
@@ -134,15 +134,14 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
   },
   shareHint: {
-    ...Typography.body,
-    color: Colors.muted,
+    ...Typography.helper,
   },
   body: {
     flex: 1,
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   playerList: {
-    gap: Spacing.sm,
+    gap: Layout.listItemGap,
   },
   playerCard: {
     flexDirection: 'row',
@@ -150,26 +149,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   playerCardYou: {
-    borderColor: Colors.tertiary,
+    borderColor: Colors.primary,
   },
   playerName: {
     ...Typography.body,
   },
   playerNameYou: {
-    color: Colors.tertiary,
+    color: Colors.primary,
   },
   footer: {
     paddingTop: Spacing.lg,
     gap: Spacing.sm,
   },
   waitingHint: {
-    ...Typography.body,
-    color: Colors.muted,
+    ...Typography.helper,
     textAlign: 'center',
   },
   waitingText: {
-    ...Typography.body,
-    color: Colors.muted,
+    ...Typography.helper,
     textAlign: 'center',
   },
 })

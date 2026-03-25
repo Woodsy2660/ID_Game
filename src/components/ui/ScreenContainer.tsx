@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Spacing } from '../../theme';
+import { Colors } from '../../theme/colors';
+import { Layout } from '../../theme/spacing';
 
 interface Props {
   children: React.ReactNode;
@@ -26,8 +27,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing['3xl'],
+    paddingHorizontal: Layout.screenPaddingH,
+    paddingTop: Layout.screenPaddingTop,
+    paddingBottom: Layout.screenPaddingBottom,
     maxWidth: 390,
     width: '100%',
     alignSelf: 'center',
