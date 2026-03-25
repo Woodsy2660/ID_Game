@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router'
 import { useAuthContext } from '../_layout'
 import { Button } from '../../src/components/ui/Button'
 import { Logo } from '../../src/components/ui/Logo'
-import { Colors, Spacing, Typography, Layout } from '../../src/theme'
+import { Colors, Typography } from '../../src/theme'
 import { useOnboarding } from '../../src/hooks/useOnboarding'
 import { OnboardingModal } from '../../src/components/onboarding/OnboardingModal'
 
@@ -25,11 +25,17 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.inner}>
 
-          <View style={styles.logoSection}>
-            <Logo size="large" showText />
+          {/* ── Brand (fills available space, centers content) ── */}
+          <View style={styles.brand}>
+            <Logo size="large" showText={false} />
+            <View style={styles.titleRow}>
+              <Text style={styles.titleWhite}>THE ID </Text>
+              <Text style={styles.titleGold}>GAME</Text>
+            </View>
             <Text style={styles.tagline}>Who knows who best?</Text>
           </View>
 
+          {/* ── Actions ── */}
           <View style={styles.actions}>
             {authError ? (
               <Text style={styles.authError}>
@@ -37,20 +43,20 @@ export default function HomeScreen() {
               </Text>
             ) : null}
 
-            <View style={styles.buttons}>
-              <Button title="Create Room" onPress={() => router.push('/(game)/create')} />
-              <Button
-                title="Join Room"
-                onPress={() => router.push('/(game)/join')}
-                variant="secondary"
-              />
-            </View>
+            <Button title="Create Room" onPress={() => router.push('/(game)/create')} />
+            <View style={{ height: 16 }} />
+            <Button
+              title="Join Room"
+              onPress={() => router.push('/(game)/join')}
+              variant="secondary"
+            />
+          </View>
+
+          {/* ── Footer ── */}
+          <View style={styles.footer}>
             <TouchableOpacity onPress={onboarding.open} style={styles.howToPlay}>
               <Text style={styles.howToPlayText}>How to play</Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
             <Text style={styles.footerText}>made with love by the Stanmore Youngins</Text>
             {__DEV__ && (
               <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
@@ -72,44 +78,62 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.screenPaddingH,
-    paddingTop: Layout.screenPaddingTop,
-    paddingBottom: Layout.screenPaddingBottom,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
-  logoSection: {
+
+  /* ── Brand (takes remaining space, centers vertically) ── */
+  brand: {
+    flex: 1,
     alignItems: 'center',
-    gap: Spacing.sm,
+    justifyContent: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  titleWhite: {
+    fontSize: 36.4,
+    fontWeight: '900',
+    color: Colors.white,
+  },
+  titleGold: {
+    fontSize: 36.4,
+    fontWeight: '900',
+    color: Colors.primary,
   },
   tagline: {
     ...Typography.body,
     color: Colors.muted,
     textAlign: 'center',
+    marginTop: 8,
   },
+
+  /* ── Actions ── */
   actions: {
-    gap: Spacing.md,
-  },
-  buttons: {
-    gap: 16,
-  },
-  howToPlay: {
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    marginTop: 12,
-  },
-  howToPlayText: {
-    ...Typography.helper,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    paddingTop: 40,
   },
   authError: {
     ...Typography.body,
     color: Colors.error,
     textAlign: 'center',
+    marginBottom: 16,
   },
+
+  /* ── Footer ── */
   footer: {
     alignItems: 'center',
-    gap: Spacing.sm,
+    marginTop: 32,
+  },
+  howToPlay: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  howToPlayText: {
+    ...Typography.helper,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   footerText: {
     ...Typography.helper,
@@ -117,9 +141,11 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     opacity: 0.5,
     textAlign: 'center',
+    marginTop: 8,
   },
   devLink: {
-    padding: Spacing.sm,
+    padding: 8,
+    marginTop: 12,
   },
   devLinkText: {
     ...Typography.label,

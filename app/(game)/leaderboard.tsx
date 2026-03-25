@@ -364,9 +364,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   nextQMText: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#555555',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   ctaButton: {

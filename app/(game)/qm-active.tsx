@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Animated, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { SlotMachine } from '../../src/components/game/SlotMachine';
@@ -11,6 +11,8 @@ import type { ResultsReadyPayload } from '../../src/hooks/useGameChannel';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import questionBank from '../../src/data/questionBank.json';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * QM Active screen:
@@ -39,10 +41,14 @@ export default function QMActiveScreen() {
 
   const [revealed, setRevealed] = useState(false);
   const [showTracker, setShowTracker] = useState(false);
+  const [slideComplete, setSlideComplete] = useState(false);
 
   const question = questionBank.find((q) => q.id === questionId);
   const answerers = players.filter((p) => p.id !== qmPlayerId);
   const submittedCount = Object.keys(submissions).length;
+
+  // Animation: slide the question card from center to top
+  const slideAnim = useRef(new Animated.Value(0)).current; // 0 = center, 1 = top
 
   // Timer ref so we can clean up the 5 s auto-broadcast on unmount
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +59,8 @@ export default function QMActiveScreen() {
   useEffect(() => {
     setRevealed(false);
     setShowTracker(false);
+    setSlideComplete(false);
+    slideAnim.setValue(0);
     transitionedRef.current = false;
   }, [roundId]);
 
@@ -99,10 +107,20 @@ export default function QMActiveScreen() {
 
   const handleRevealed = () => {
     setRevealed(true);
+
+    // Animate the question card from center to top
+    Animated.timing(slideAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      setSlideComplete(true);
+    });
+
     if (isQM()) {
       const isDevMode = roomCode?.startsWith('DEV');
       // QM has already had 2.5s to read (built into SlotMachine).
-      // Short delay for compact transition to finish, then broadcast and show tracker.
+      // Short delay for slide-up transition to finish, then broadcast and show tracker.
       revealTimerRef.current = setTimeout(async () => {
         if (isDevMode) {
           setShowTracker(true);
@@ -118,62 +136,87 @@ export default function QMActiveScreen() {
 
   // ─── QM view ──────────────────────────────────────────────────────────────
   if (isQM()) {
-    // Pre-reveal: full-screen spinner with shhh overlay
-    if (!revealed) {
+    // The question card's translateY: from vertically centered to top
+    // Center offset ≈ (screenHeight / 2) - cardHeight/2 - topPadding
+    // We animate from 0 (natural position in centered container) to a negative value
+    const slideUpDistance = SCREEN_HEIGHT * 0.28;
+    const translateY = slideAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, -slideUpDistance],
+    });
+
+    // Fade out the SlotMachine spinner elements, fade in question card content
+    const spinnerOpacity = slideAnim.interpolate({
+      inputRange: [0, 0.3],
+      outputRange: [1, 0],
+    });
+
+    // Once the slide is complete, swap to the ScrollView layout
+    if (slideComplete) {
       return (
         <ScreenContainer>
-          <View style={styles.container}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Question card at top */}
+            <View style={styles.questionTop}>
+              <View style={styles.questionCard}>
+                <Text style={styles.questionLabel}>YOUR SECRET QUESTION</Text>
+                <Text style={styles.questionText}>{question?.text ?? ''}</Text>
+              </View>
+            </View>
+
+            {/* Arrange IDs */}
+            {showTracker && (
+              <Animated.View style={[styles.arrangeContainer, { opacity: 1 }]}>
+                <Text style={styles.arrangeTitle}>ARRANGE IDs</Text>
+                <View style={styles.cardList}>
+                  <Text style={styles.rankLabel}>MOST LIKELY</Text>
+                  <IDCard delay={0} />
+                  <IDCard delay={100} />
+                  <IDCard delay={200} />
+                  <Text style={styles.rankLabel}>LEAST LIKELY</Text>
+                </View>
+              </Animated.View>
+            )}
+
+            {/* Submission tracker */}
+            {showTracker && (
+              <View style={styles.trackerArea}>
+                <SubmissionTracker
+                  submitted={submittedCount}
+                  total={answerers.length}
+                  playerNames={answerers.map((p) => p.displayName)}
+                />
+              </View>
+            )}
+          </ScrollView>
+        </ScreenContainer>
+      );
+    }
+
+    // Pre-reveal + animating: centered layout with SlotMachine and animated question card
+    return (
+      <ScreenContainer>
+        <View style={styles.container}>
+          {!revealed ? (
             <SlotMachine
               questionId={questionId!}
               visibleQuestionIds={visibleQuestionIds}
               onRevealed={handleRevealed}
             />
-          </View>
-        </ScreenContainer>
-      );
-    }
-
-    // Post-reveal: question card pinned at top, arrange IDs + tracker below
-    return (
-      <ScreenContainer>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Question card at top */}
-          <View style={styles.questionTop}>
-            <View style={styles.questionCard}>
-              <Text style={styles.questionLabel}>YOUR SECRET QUESTION</Text>
-              <Text style={styles.questionText}>{question?.text ?? ''}</Text>
-            </View>
-          </View>
-
-          {/* Arrange IDs */}
-          {showTracker && (
-            <View style={styles.arrangeContainer}>
-              <Text style={styles.arrangeTitle}>ARRANGE IDs</Text>
-              <View style={styles.cardList}>
-                <Text style={styles.rankLabel}>MOST LIKELY</Text>
-                <IDCard delay={0} />
-                <IDCard delay={100} />
-                <IDCard delay={200} />
-                <Text style={styles.rankLabel}>LEAST LIKELY</Text>
+          ) : (
+            // Post-reveal animating: question card slides from center to top
+            <Animated.View style={[styles.animatingCard, { transform: [{ translateY }] }]}>
+              <View style={styles.questionCard}>
+                <Text style={styles.questionLabel}>YOUR SECRET QUESTION</Text>
+                <Text style={styles.questionText}>{question?.text ?? ''}</Text>
               </View>
-            </View>
+            </Animated.View>
           )}
-
-          {/* Submission tracker */}
-          {showTracker && (
-            <View style={styles.trackerArea}>
-              <SubmissionTracker
-                submitted={submittedCount}
-                total={answerers.length}
-                playerNames={answerers.map((p) => p.displayName)}
-              />
-            </View>
-          )}
-        </ScrollView>
+        </View>
       </ScreenContainer>
     );
   }
@@ -207,6 +250,9 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.xl,
     justifyContent: 'center',
+  },
+  animatingCard: {
+    paddingHorizontal: Spacing.md,
   },
   scroll: {
     flex: 1,

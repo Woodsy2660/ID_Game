@@ -73,7 +73,9 @@ export default function LobbyScreen() {
       </View>
 
       {/* Sneak peek button */}
-      <QuestionsPreviewButton onPress={() => setPreviewVisible(true)} />
+      <View style={{ marginBottom: 16 }}>
+        <QuestionsPreviewButton onPress={() => setPreviewVisible(true)} />
+      </View>
       <QuestionsPreviewModal
         visible={previewVisible}
         onClose={() => setPreviewVisible(false)}
