@@ -44,17 +44,20 @@ export default function HomeScreen() {
                 onPress={() => router.push('/(game)/join')}
                 variant="secondary"
               />
-              <TouchableOpacity onPress={onboarding.open} style={styles.howToPlay}>
-                <Text style={styles.howToPlayText}>How to play</Text>
-              </TouchableOpacity>
             </View>
+            <TouchableOpacity onPress={onboarding.open} style={styles.howToPlay}>
+              <Text style={styles.howToPlayText}>How to play</Text>
+            </TouchableOpacity>
           </View>
 
-          {__DEV__ && (
-            <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
-              <Text style={styles.devLinkText}>Dev Mode</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>made with love by the Stanmore Youngins</Text>
+            {__DEV__ && (
+              <TouchableOpacity onPress={() => router.push('/dev')} style={styles.devLink}>
+                <Text style={styles.devLinkText}>Dev Mode</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
         </View>
       </SafeAreaView>
@@ -87,11 +90,12 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   buttons: {
-    gap: Layout.buttonGap,
+    gap: 16,
   },
   howToPlay: {
     alignItems: 'center',
     paddingVertical: Spacing.sm,
+    marginTop: 12,
   },
   howToPlayText: {
     ...Typography.helper,
@@ -103,8 +107,18 @@ const styles = StyleSheet.create({
     color: Colors.error,
     textAlign: 'center',
   },
+  footer: {
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  footerText: {
+    ...Typography.helper,
+    fontSize: 12,
+    color: Colors.muted,
+    opacity: 0.5,
+    textAlign: 'center',
+  },
   devLink: {
-    alignSelf: 'center',
     padding: Spacing.sm,
   },
   devLinkText: {

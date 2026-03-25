@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
@@ -10,6 +10,8 @@ import { Button } from '../../src/components/ui/Button'
 import { Card } from '../../src/components/ui/Card'
 import { Badge } from '../../src/components/ui/Badge'
 import { Colors, Spacing, Typography, Layout } from '../../src/theme'
+import { QuestionsPreviewButton } from '../../src/components/game/QuestionsPreviewButton'
+import { QuestionsPreviewModal } from '../../src/components/game/QuestionsPreviewModal'
 import type { GameStartPayload } from '../../src/store/types'
 
 export default function LobbyScreen() {
@@ -42,6 +44,8 @@ export default function LobbyScreen() {
     router.push('/(game)/round-start')
   }, [router, player_id, room_code])
 
+  const [previewVisible, setPreviewVisible] = useState(false)
+
   const { players, isConnected } = useRoom(
     room_code ?? '',
     player_id ?? '',
@@ -67,6 +71,13 @@ export default function LobbyScreen() {
         </Card>
         <Text style={styles.shareHint}>Share this code with your friends</Text>
       </View>
+
+      {/* Sneak peek button */}
+      <QuestionsPreviewButton onPress={() => setPreviewVisible(true)} />
+      <QuestionsPreviewModal
+        visible={previewVisible}
+        onClose={() => setPreviewVisible(false)}
+      />
 
       {/* Player list */}
       <View style={styles.body}>
