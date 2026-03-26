@@ -183,6 +183,7 @@ export default function LeaderboardScreen() {
             contentContainerStyle={[
               styles.scrollContent,
               ranked.length <= 3 && styles.scrollContentCentered,
+              ranked.length >= 4 && ranked.length < 7 && styles.scrollContentCenteredSmall,
             ]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
@@ -190,8 +191,8 @@ export default function LeaderboardScreen() {
             onContentSizeChange={handleContentSizeChange}
             onLayout={handleLayout}
           >
-            {ranked.length <= 3 ? (
-              /* Case 1 & 2: ≤3 players — stack all as large ID cards vertically, centered on screen */
+            {ranked.length < 7 ? (
+              /* <7 players — stack all podium cards vertically as large cards, centered */
               <View style={styles.centeredPodium}>
                 <View style={styles.podiumColumn}>
                   {top3.map((p, i) => (
@@ -204,10 +205,21 @@ export default function LeaderboardScreen() {
                       size="large"
                     />
                   ))}
+                  {/* Ranks 4–6 as compact rows, same width as large podium cards */}
+                  {rest.map((p, i) => (
+                    <View key={p.id} style={styles.compactRowAligned}>
+                      <LeaderboardCompactRow
+                        rank={i + 4}
+                        playerName={p.displayName}
+                        score={p.score}
+                        delay={(i + 3) * 80}
+                      />
+                    </View>
+                  ))}
                 </View>
               </View>
             ) : (
-              /* Case 3: 4+ players — podium layout + compact rows */
+              /* 7+ players — triple stack podium + compact rows */
               <>
                 {/* Gold card centered on top */}
                 <View style={styles.podiumColumn}>
@@ -336,6 +348,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
   },
+  scrollContentCenteredSmall: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
+    paddingTop: 8,
+  },
   centeredPodium: {
     alignItems: 'center',
   },
@@ -347,6 +364,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
+  },
+  compactRowAligned: {
+    width: 210,
   },
   sectionGap: {
     height: 6,
