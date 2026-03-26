@@ -10,22 +10,36 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
+import { useAuthContext } from '../_layout'
 import { usePlayerStore } from '../../src/stores/playerStore'
 import { Button } from '../../src/components/ui/Button'
-import { Colors, Spacing, Typography, Radius } from '../../src/theme'
+import { BackButton } from '../../src/components/ui/BackButton'
+import { Colors, Spacing, Typography, Radius, Layout } from '../../src/theme'
 
 export default function JoinScreen() {
   const router = useRouter()
-  const { display_name, setRoom } = usePlayerStore()
+  const { user, setDisplayName } = useAuthContext()
+  const setPlayer = usePlayerStore((s) => s.setPlayer)
+  const setRoom = usePlayerStore((s) => s.setRoom)
+
+  const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
+  const trimmed = name.trim()
+  const canJoin = trimmed.length >= 2 && code.length === 6 && !!user && !loading
+
   const handleJoin = async (roomCode: string) => {
+    if (!user || trimmed.length < 2) return
     setLoading(true)
     setErrorMsg('')
+
+    await setDisplayName(trimmed)
+    setPlayer(user.id, trimmed)
+
     const { data, error } = await supabase.functions.invoke('join-room', {
-      body: { room_code: roomCode, display_name },
+      body: { room_code: roomCode, display_name: trimmed },
     })
     setLoading(false)
 
@@ -49,7 +63,7 @@ export default function JoinScreen() {
   const handleChangeCode = (text: string) => {
     const upper = text.toUpperCase()
     setCode(upper)
-    if (upper.length === 6) handleJoin(upper)
+    if (upper.length === 6 && trimmed.length >= 2) handleJoin(upper)
   }
 
   return (
@@ -58,17 +72,18 @@ export default function JoinScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.safe}>
+        <BackButton />
         <View style={styles.inner}>
 
           <View style={styles.header}>
             <Text style={styles.title}>Join a Room</Text>
-            <Text style={styles.subtitle}>Enter the 6-character room code</Text>
+            <Text style={styles.subtitle}>Enter your name and the room code</Text>
           </View>
 
           <View style={styles.inputSection}>
             <TextInput
-              style={[styles.input, !!errorMsg && styles.inputError]}
-              placeholder="······"
+              style={[styles.codeInput, !!errorMsg && styles.inputError]}
+              placeholder="Enter code..."
               placeholderTextColor={Colors.border}
               value={code}
               onChangeText={handleChangeCode}
@@ -76,16 +91,26 @@ export default function JoinScreen() {
               autoCapitalize="characters"
               autoFocus
               keyboardType="default"
+              returnKeyType="next"
+            />
+
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Enter your name"
+              placeholderTextColor={Colors.muted}
+              value={name}
+              onChangeText={setName}
+              maxLength={20}
               returnKeyType="go"
-              onSubmitEditing={() => code.length === 6 && handleJoin(code)}
+              onSubmitEditing={() => canJoin && handleJoin(code)}
             />
 
             {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
 
             <Button
-              title="Join"
+              title={loading ? 'Joining...' : 'Join'}
               onPress={() => handleJoin(code)}
-              disabled={code.length !== 6 || loading}
+              disabled={!canJoin}
             />
           </View>
 
@@ -105,9 +130,9 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing['5xl'],
-    paddingBottom: Spacing['3xl'],
+    paddingHorizontal: Layout.screenPaddingH,
+    paddingTop: Layout.screenPaddingTop,
+    paddingBottom: Layout.screenPaddingBottom,
     justifyContent: 'center',
     gap: Spacing['3xl'],
   },
@@ -126,13 +151,24 @@ const styles = StyleSheet.create({
   inputSection: {
     gap: Spacing.md,
   },
-  input: {
+  nameInput: {
     backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 18,
+    paddingVertical: Spacing.md,
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.white,
+  },
+  codeInput: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     fontSize: 32,
     fontWeight: '800',
     letterSpacing: 10,

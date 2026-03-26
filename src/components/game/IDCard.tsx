@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardWrapper: {
-    width: 240,
+    width: 158,
     height: 100,
   },
   shadowLayer: {
@@ -83,12 +83,12 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   leftSection: {
-    width: 60,
+    width: 44,
     justifyContent: 'center',
   },
   photoBox: {
-    width: 60,
-    height: 60,
+    width: 44,
+    height: 50,
     backgroundColor: '#2D323E',
     borderRadius: Radius.sm,
     overflow: 'hidden',
@@ -96,19 +96,19 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   photoBody: {
-    width: 32,
-    height: 22,
+    width: 24,
+    height: 18,
     backgroundColor: '#3F4451',
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   photoHead: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#3F4451',
     position: 'absolute',
-    top: 12,
+    top: 10,
   },
   rightSection: {
     flex: 1,

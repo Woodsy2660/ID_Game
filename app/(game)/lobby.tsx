@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
@@ -9,7 +9,10 @@ import { ScreenContainer } from '../../src/components/ui/ScreenContainer'
 import { Button } from '../../src/components/ui/Button'
 import { Card } from '../../src/components/ui/Card'
 import { Badge } from '../../src/components/ui/Badge'
-import { Colors, Spacing, Typography } from '../../src/theme'
+import { Colors, Spacing, Typography, Layout } from '../../src/theme'
+import { BackButton } from '../../src/components/ui/BackButton'
+import { QuestionsPreviewButton } from '../../src/components/game/QuestionsPreviewButton'
+import { QuestionsPreviewModal } from '../../src/components/game/QuestionsPreviewModal'
 import type { GameStartPayload } from '../../src/store/types'
 
 export default function LobbyScreen() {
@@ -42,6 +45,8 @@ export default function LobbyScreen() {
     router.push('/(game)/round-start')
   }, [router, player_id, room_code])
 
+  const [previewVisible, setPreviewVisible] = useState(false)
+
   const { players, isConnected } = useRoom(
     room_code ?? '',
     player_id ?? '',
@@ -58,6 +63,7 @@ export default function LobbyScreen() {
 
   return (
     <ScreenContainer>
+      <BackButton onPress={() => { clearRoom(); router.replace('/(auth)'); }} />
 
       {/* Room code */}
       <View style={styles.header}>
@@ -67,6 +73,15 @@ export default function LobbyScreen() {
         </Card>
         <Text style={styles.shareHint}>Share this code with your friends</Text>
       </View>
+
+      {/* Sneak peek button */}
+      <View style={{ marginBottom: 16 }}>
+        <QuestionsPreviewButton onPress={() => setPreviewVisible(true)} />
+      </View>
+      <QuestionsPreviewModal
+        visible={previewVisible}
+        onClose={() => setPreviewVisible(false)}
+      />
 
       {/* Player list */}
       <View style={styles.body}>
@@ -79,7 +94,7 @@ export default function LobbyScreen() {
             return (
               <Card
                 key={p.player_id}
-                style={[styles.playerCard, isYou && styles.playerCardYou]}
+                style={isYou ? { ...styles.playerCard, ...styles.playerCardYou } : styles.playerCard}
               >
                 <Text style={[styles.playerName, isYou && styles.playerNameYou]}>
                   {p.display_name}{isYou ? ' (you)' : ''}
@@ -117,13 +132,13 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingBottom: Spacing['2xl'],
+    paddingBottom: Spacing.lg,
   },
   sectionLabel: {
     ...Typography.label,
   },
   codeCard: {
-    paddingHorizontal: Spacing['3xl'],
+    paddingHorizontal: Spacing['2xl'],
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },
@@ -134,15 +149,14 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
   },
   shareHint: {
-    ...Typography.body,
-    color: Colors.muted,
+    ...Typography.helper,
   },
   body: {
     flex: 1,
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   playerList: {
-    gap: Spacing.sm,
+    gap: Layout.listItemGap,
   },
   playerCard: {
     flexDirection: 'row',
@@ -150,26 +164,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   playerCardYou: {
-    borderColor: Colors.tertiary,
+    borderColor: Colors.primary,
   },
   playerName: {
     ...Typography.body,
   },
   playerNameYou: {
-    color: Colors.tertiary,
+    color: Colors.primary,
   },
   footer: {
     paddingTop: Spacing.lg,
     gap: Spacing.sm,
   },
   waitingHint: {
-    ...Typography.body,
-    color: Colors.muted,
+    ...Typography.helper,
     textAlign: 'center',
   },
   waitingText: {
-    ...Typography.body,
-    color: Colors.muted,
+    ...Typography.helper,
     textAlign: 'center',
   },
 })

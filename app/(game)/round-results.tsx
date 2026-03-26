@@ -84,22 +84,24 @@ export default function RoundResultsScreen() {
 function AnswererResultView({
   isCorrect,
   questionText,
-  qmName,
 }: {
   isCorrect: boolean;
   questionText: string;
   qmName: string;
 }) {
   const bgColor = isCorrect ? Colors.success : (Colors.error || '#EF4444');
-  const resultLabel = isCorrect ? 'Correct!' : 'Wrong!';
+  const resultLabel = isCorrect ? 'Correct' : 'Incorrect';
+  const icon = isCorrect ? '✓' : '✕';
   const scoreLabel = isCorrect ? '+1 point' : 'No points this round';
 
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.85);
+  const iconScale = useSharedValue(0.3);
 
   useEffect(() => {
     opacity.value = withTiming(1, { duration: 350 });
     scale.value = withSpring(1, { damping: 14, stiffness: 160 });
+    iconScale.value = withSpring(1, { damping: 10, stiffness: 120 });
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -107,19 +109,25 @@ function AnswererResultView({
     transform: [{ scale: scale.value }],
   }));
 
+  const iconAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }));
+
   return (
     <SafeAreaView style={[styles.resultSafe, { backgroundColor: bgColor }]}>
       <Animated.View style={[styles.resultContent, animStyle]}>
-        <Text style={styles.resultLabel}>{resultLabel}</Text>
-        <Text style={styles.scoreLabel}>{scoreLabel}</Text>
+        {/* Big icon + title */}
+        <View style={styles.resultTop}>
+          <Animated.Text style={[styles.resultIcon, iconAnimStyle]}>{icon}</Animated.Text>
+          <Text style={styles.resultLabel}>{resultLabel}</Text>
+          <Text style={styles.scoreLabel}>{scoreLabel}</Text>
+        </View>
 
+        {/* Question reveal card */}
         <View style={styles.questionReveal}>
           <Text style={styles.revealHeading}>THE QUESTION WAS</Text>
           <Text style={styles.revealQuestion}>{questionText}</Text>
-          <Text style={styles.revealHint}>Asked about {qmName}</Text>
         </View>
-
-        <Text style={styles.autoAdvanceHintDark}>Heading to leaderboard...</Text>
       </Animated.View>
     </SafeAreaView>
   );
@@ -131,7 +139,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Spacing['5xl'],
+    paddingBottom: Spacing['4xl'],
   },
   qmHeader: {
     ...Typography.heading,
@@ -139,17 +147,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.md,
     marginBottom: Spacing.xl,
-    fontSize: 22,
   },
   footer: {
     paddingVertical: Spacing.lg,
     alignItems: 'center',
   },
   autoAdvanceHint: {
-    ...Typography.body,
-    color: Colors.muted,
+    ...Typography.helper,
     textAlign: 'center',
-    fontSize: 12,
   },
 
   // Answerer result
@@ -161,53 +166,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing['2xl'],
-    gap: Spacing.xl,
+    gap: 32,
+  },
+  resultTop: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  resultIcon: {
+    fontSize: 72,
+    fontWeight: '900',
+    color: Colors.black,
+    textAlign: 'center',
+    lineHeight: 80,
+    marginBottom: 4,
   },
   resultLabel: {
-    fontSize: 40,
+    ...Typography.display,
+    fontSize: 36,
+    lineHeight: 42,
     fontWeight: '900',
     color: Colors.black,
     textAlign: 'center',
   },
   scoreLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'rgba(0,0,0,0.6)',
+    ...Typography.label,
+    color: 'rgba(0,0,0,0.55)',
     textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    marginTop: 4,
   },
   questionReveal: {
     backgroundColor: 'rgba(0,0,0,0.12)',
     borderRadius: Radius.lg,
-    padding: Spacing['2xl'],
+    padding: 24,
     gap: Spacing.sm,
     width: '100%',
     alignItems: 'center',
   },
   revealHeading: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    ...Typography.label,
     color: 'rgba(0,0,0,0.5)',
   },
   revealQuestion: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...Typography.heading,
     color: Colors.black,
     textAlign: 'center',
-    lineHeight: 24,
-  },
-  revealHint: {
-    fontSize: 13,
-    color: 'rgba(0,0,0,0.5)',
-    textAlign: 'center',
-  },
-  autoAdvanceHintDark: {
-    fontSize: 12,
-    color: 'rgba(0,0,0,0.45)',
-    textAlign: 'center',
-    marginTop: Spacing.lg,
   },
 });
