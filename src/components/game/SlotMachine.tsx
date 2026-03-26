@@ -165,7 +165,7 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed, compac
 
   // Number area collapses smoothly: height shrinks, gap closes
   const numberAreaAnimStyle = useAnimatedStyle(() => ({
-    maxHeight: (1 - compactProgress.value) * 120,
+    maxHeight: (1 - compactProgress.value) * 220,
     marginBottom: (1 - compactProgress.value) * 32,
     opacity: 1 - compactProgress.value,
     overflow: 'hidden' as const,
@@ -187,6 +187,7 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed, compac
       <Animated.View style={[compact ? styles.spinnerCompact : styles.spinnerContainer, spinnerAnimStyle]}>
         {/* Number with bracket frame — collapses in compact mode */}
         <Animated.View style={numberAreaAnimStyle}>
+          <Text style={styles.pickingText}>Picking your question…</Text>
           <View style={styles.numberArea}>
             <Animated.View style={[styles.bracket, bracketAnimStyle]} />
             <Animated.View style={numberAnimStyle}>
@@ -262,12 +263,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 0,
   },
+  pickingText: {
+    ...Typography.body,
+    color: Colors.muted,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
   numberArea: {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 24,
+    paddingHorizontal: 40,
   },
   bracket: {
     position: 'absolute',

@@ -8,8 +8,6 @@ import {
   StyleSheet,
   Platform,
   AccessibilityInfo,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,8 +18,8 @@ import { OnboardingSlide } from './OnboardingSlide';
 import { OnboardingVisualSetup } from './visuals/OnboardingVisualSetup';
 import { OnboardingVisualSecretQuestion } from './visuals/OnboardingVisualSecretQuestion';
 import { OnboardingVisualRanking } from './visuals/OnboardingVisualRanking';
-import { OnboardingVisualGuessing } from './visuals/OnboardingVisualGuessing';
-import { OnboardingVisualScoring } from './visuals/OnboardingVisualScoring';
+import { OnboardingVisualGuessAndScore } from './visuals/OnboardingVisualGuessAndScore';
+import { OnboardingVisualHaveFun } from './visuals/OnboardingVisualHaveFun';
 import type { OnboardingControls } from '../../hooks/useOnboarding';
 
 const SKIP_ROW_HEIGHT = 48;
@@ -34,19 +32,20 @@ const SLIDE_DATA = [
   },
   {
     title: 'One player sees a secret question',
-    body: 'One player sees a secret question. No one else knows what it is.',
+    body: 'No one else knows what it is.',
   },
   {
     title: 'Rank the group',
     body: 'The Question Master orders players from most to least likely using the IDs.',
   },
   {
-    title: 'Guess the question',
-    body: 'Everyone else picks what they think the secret question was.',
+    title: 'Other players guess the right question',
+    body: 'Score a point if you get it right, no points for getting it wrong.',
   },
   {
-    title: 'Score a point',
-    body: 'Get the exact question right to earn a point.',
+    title: 'Have fun playing!',
+    body: 'Let\u2019s see who knows who best \uD83D\uDE43',
+    centerText: true,
   },
 ];
 
@@ -89,21 +88,14 @@ export function OnboardingModal({ isOpen, step, totalSteps, close, next, complet
     scrollRef.current?.scrollTo({ x: step * screenWidth, animated });
   }, [step, isOpen, reduceMotion, screenWidth]);
 
-  const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const newIndex = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-    if (newIndex !== intentStepRef.current) {
-      goTo(newIndex);
-    }
-  };
-
   const renderVisual = (index: number) => {
     const props = { isActive: index === step, reduceMotion };
     switch (index) {
       case 0: return <OnboardingVisualSetup {...props} />;
       case 1: return <OnboardingVisualSecretQuestion {...props} />;
       case 2: return <OnboardingVisualRanking {...props} />;
-      case 3: return <OnboardingVisualGuessing {...props} />;
-      case 4: return <OnboardingVisualScoring {...props} />;
+      case 3: return <OnboardingVisualGuessAndScore {...props} />;
+      case 4: return <OnboardingVisualHaveFun {...props} />;
       default: return null;
     }
   };
@@ -117,10 +109,10 @@ export function OnboardingModal({ isOpen, step, totalSteps, close, next, complet
     >
       <View style={styles.root}>
         <SafeAreaView style={styles.safe}>
-          {/* Skip row */}
+          {/* Close row */}
           <View style={[styles.skipRow, { height: SKIP_ROW_HEIGHT }]}>
-            <TouchableOpacity onPress={close} style={styles.skipButton} hitSlop={12}>
-              <Text style={styles.skipText}>Skip</Text>
+            <TouchableOpacity onPress={close} style={styles.closeButton} hitSlop={12}>
+              <Text style={styles.closeIcon}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -135,9 +127,8 @@ export function OnboardingModal({ isOpen, step, totalSteps, close, next, complet
                 horizontal
                 pagingEnabled
                 bounces={false}
-                scrollEnabled
+                scrollEnabled={false}
                 showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={handleMomentumScrollEnd}
                 scrollEventThrottle={16}
               >
                 {SLIDE_DATA.map((slide, i) => (
@@ -148,6 +139,7 @@ export function OnboardingModal({ isOpen, step, totalSteps, close, next, complet
                     visual={renderVisual(i)}
                     width={screenWidth}
                     height={slideAreaHeight}
+                    centerText={'centerText' in slide && !!slide.centerText}
                   />
                 ))}
               </ScrollView>
@@ -180,17 +172,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
-  skipButton: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.raised,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  skipText: {
-    fontSize: 13,
-    fontWeight: '600',
+  closeIcon: {
+    fontSize: 14,
     color: Colors.muted,
-    letterSpacing: 0.3,
+    fontWeight: '600',
   },
   slideArea: {
     flex: 1,

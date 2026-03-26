@@ -9,8 +9,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Colors, Radius } from '../../../theme';
 
-const CARD_W = 200;
-const CARD_H = 42;
+const CARD_W = 88;
+const CARD_H = 56;
 const GAP = 10;
 const STEP = CARD_H + GAP;
 
@@ -94,11 +94,6 @@ export function OnboardingVisualRanking({ isActive, reduceMotion }: Props) {
             key={card.id}
             style={[styles.card, card.isTopAfterSort && styles.cardTop, cardStyles[i]]}
           >
-            {card.isTopAfterSort && (
-              <Animated.View style={[styles.rankBadge, badgeStyle]}>
-                <Text style={styles.rankBadgeText}>1</Text>
-              </Animated.View>
-            )}
             <Text style={[styles.cardLabel, card.isTopAfterSort && styles.cardLabelTop]}>
               {card.id}
             </Text>
@@ -113,14 +108,14 @@ export function OnboardingVisualRanking({ isActive, reduceMotion }: Props) {
 const styles = StyleSheet.create({
   outer: {
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   labelTop: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: Colors.tertiary,
+    color: Colors.muted,
   },
   labelBottom: {
     fontSize: 11,
@@ -139,39 +134,23 @@ const styles = StyleSheet.create({
     right: 0,
     height: CARD_H,
     borderRadius: Radius.lg,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderWidth: 2,
+    borderColor: Colors.primary,
     backgroundColor: Colors.surface,
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    justifyContent: 'center',
   },
   cardTop: {
     borderColor: Colors.primary,
-    borderLeftWidth: 3,
     backgroundColor: Colors.raised,
   },
   cardLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.muted,
-    letterSpacing: 0.5,
+    color: Colors.primary,
+    letterSpacing: 1,
   },
   cardLabelTop: {
     color: Colors.primary,
-  },
-  rankBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  rankBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: Colors.black,
   },
 });

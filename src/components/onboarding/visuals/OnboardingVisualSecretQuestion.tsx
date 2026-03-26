@@ -101,17 +101,19 @@ export function OnboardingVisualSecretQuestion({ isActive, reduceMotion }: Props
       {/* Spacer between q card and player row */}
       <View style={styles.gap} />
 
-      {/* Player cards row */}
+      {/* Player icons row */}
       <View style={styles.playerRow}>
         {PLAYERS.map((p, i) => (
           <Animated.View
             key={p.id}
-            style={[
-              styles.playerCard,
-              p.isHighlighted && styles.playerCardHighlighted,
-              playerStyles[i],
-            ]}
+            style={[styles.playerItem, playerStyles[i]]}
           >
+            <View style={[styles.avatarCircle, p.isHighlighted && styles.avatarCircleHighlighted]}>
+              {/* Head */}
+              <View style={[styles.avatarHead, p.isHighlighted && styles.avatarPartHighlighted]} />
+              {/* Body */}
+              <View style={[styles.avatarBody, p.isHighlighted && styles.avatarPartHighlighted]} />
+            </View>
             <Text style={[styles.playerLabel, p.isHighlighted && styles.playerLabelHighlighted]}>
               {p.id}
             </Text>
@@ -162,22 +164,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: ROW_GAP,
   },
-  playerCard: {
+  playerItem: {
+    alignItems: 'center',
     width: PLAYER_CARD_W,
-    height: PLAYER_CARD_H,
-    borderRadius: Radius.sm,
+    gap: 4,
+  },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  playerCardHighlighted: {
+  avatarCircleHighlighted: {
     borderColor: Colors.primary,
     backgroundColor: Colors.raised,
   },
+  avatarHead: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.muted,
+    marginBottom: 1,
+  },
+  avatarBody: {
+    width: 18,
+    height: 9,
+    borderTopLeftRadius: 9,
+    borderTopRightRadius: 9,
+    backgroundColor: Colors.muted,
+  },
+  avatarPartHighlighted: {
+    backgroundColor: Colors.primary,
+  },
   playerLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.muted,
     letterSpacing: 0.5,

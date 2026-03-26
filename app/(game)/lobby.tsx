@@ -10,6 +10,7 @@ import { Button } from '../../src/components/ui/Button'
 import { Card } from '../../src/components/ui/Card'
 import { Badge } from '../../src/components/ui/Badge'
 import { Colors, Spacing, Typography, Layout } from '../../src/theme'
+import { BackButton } from '../../src/components/ui/BackButton'
 import { QuestionsPreviewButton } from '../../src/components/game/QuestionsPreviewButton'
 import { QuestionsPreviewModal } from '../../src/components/game/QuestionsPreviewModal'
 import type { GameStartPayload } from '../../src/store/types'
@@ -62,6 +63,7 @@ export default function LobbyScreen() {
 
   return (
     <ScreenContainer>
+      <BackButton onPress={() => { clearRoom(); router.replace('/(auth)'); }} />
 
       {/* Room code */}
       <View style={styles.header}>

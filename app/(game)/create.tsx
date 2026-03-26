@@ -15,6 +15,7 @@ import { useAuthContext } from '../_layout'
 import { usePlayerStore } from '../../src/stores/playerStore'
 import { Button } from '../../src/components/ui/Button'
 import { Card } from '../../src/components/ui/Card'
+import { BackButton } from '../../src/components/ui/BackButton'
 import { Colors, Spacing, Typography, Radius, Layout } from '../../src/theme'
 
 export default function CreateScreen() {
@@ -96,6 +97,7 @@ export default function CreateScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.safe}>
+        <BackButton />
         <View style={styles.inner}>
 
           <View style={styles.header}>
