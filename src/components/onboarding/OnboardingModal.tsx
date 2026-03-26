@@ -28,18 +28,18 @@ const BOTTOM_BAR_HEIGHT = 120;
 const SLIDE_DATA = [
   {
     title: 'Place your IDs on the table',
-    body: 'This is a physical game. Each player places their real ID card in the centre of the group.',
+    body: 'This is a physical game. Gather around and place your IDs in the centre of the group.',
   },
   {
     title: 'One player sees a secret question',
-    body: 'No one else knows what it is.',
+    body: 'You are now the Question Master.',
   },
   {
     title: 'Rank the group',
-    body: 'The Question Master orders players from most to least likely using the IDs.',
+    body: 'Based on the secret question, the Question Master orders players from most to least likely using the IDs.',
   },
   {
-    title: 'Other players guess the right question',
+    title: 'Other players guess the question',
     body: 'Score a point if you get it right, no points for getting it wrong.',
   },
   {
