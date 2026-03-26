@@ -3,15 +3,14 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { Button } from '../../src/components/ui/Button';
-import { SecretQuestionCard } from '../../src/components/game/SecretQuestionCard';
 import { SubmissionTracker } from '../../src/components/game/SubmissionTracker';
 import { GuessOptionList } from '../../src/components/game/GuessOptionList';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
+import { usePlayerStore } from '../../src/stores/playerStore';
 import { supabase } from '../../src/lib/supabase';
+import { CountdownTimer } from '../../src/components/CountdownTimer';
 import { Colors, Spacing, Typography } from '../../src/theme';
-import questionBank from '../../src/data/questionBank.json';
-import { startMockSubmissions, stopMockSubmissions } from '../../src/services/mockSubmissions';
 
 /**
  * Answer Phase screen — splits into two views:
@@ -36,15 +35,17 @@ export default function AnswerPhaseScreen() {
   const qmPlayerId = useGameStore((s) => s.qmPlayerId);
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const submissions = useGameStore((s) => s.submissions);
+  const answerPhaseStartedAt = useGameStore((s) => s.answerPhaseStartedAt);
   const submitAnswer = useGameStore((s) => s.submitAnswer);
   const syncSubmissions = useGameStore((s) => s.syncSubmissions);
   const computeResults = useGameStore((s) => s.computeResults);
   const advancePhase = useGameStore((s) => s.advancePhase);
 
+  const { room_id } = usePlayerStore();
+
   const qmPlayer = players.find((p) => p.id === qmPlayerId);
   const answerers = players.filter((p) => p.id !== qmPlayerId);
   const submittedCount = Object.keys(submissions).length;
-  const question = questionBank.find((q) => q.id === questionId);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -56,17 +57,17 @@ export default function AnswerPhaseScreen() {
 
   /**
    * Single entry point for transitioning to round-results.
-   * Called from three places:
-   *   1. handleSubmit — when this player was the last to answer
-   *   2. onAnswerSubmitted — when a remote answer completed the set
-   *   3. onResultsReady — when another device already detected completion and broadcast it
+   * skipBroadcast = true when expire-round already notified all clients via round:results,
+   * so we don't need to re-broadcast results:ready.
    */
-  const navigateToResults = () => {
+  const navigateToResults = (skipBroadcast = false) => {
     if (transitionedRef.current) return;
     transitionedRef.current = true;
-    // Broadcast the complete submissions map so all devices compute from identical data
-    const authoritative = useGameStore.getState().submissions;
-    broadcastResultsReadyRef.current?.(authoritative);
+    if (!skipBroadcast) {
+      // Broadcast the complete submissions map so all devices compute from identical data
+      const authoritative = useGameStore.getState().submissions;
+      broadcastResultsReadyRef.current?.(authoritative);
+    }
     // Compute results synchronously before mounting round-results so the store is ready
     computeResults();
     advancePhase(); // answer_phase → round_results
@@ -74,6 +75,10 @@ export default function AnswerPhaseScreen() {
   };
 
   const { broadcastAnswer, broadcastResultsReady } = useGameChannel(roomCode ?? '', {
+    onGameEnded: () => {
+      usePlayerStore.getState().clearRoom();
+      router.replace('/');
+    },
     onAnswerSubmitted: ({ playerId, guessedQuestionId }) => {
       submitAnswer(playerId, guessedQuestionId);
       // Check right after recording — if this was the last remote answer, transition
@@ -87,18 +92,26 @@ export default function AnswerPhaseScreen() {
       syncSubmissions(authoritative);
       navigateToResults();
     },
+    // A player left mid-round — recheck if remaining answerers have all submitted
+    onPlayerLeft: () => {
+      if (useGameStore.getState().allAnswered()) {
+        navigateToResults();
+      }
+    },
+    // Timer expired server-side — expire-round broadcast round:results to everyone
+    onRoundExpired: () => navigateToResults(true),
   });
   // Assign after useGameChannel so navigateToResults can call it via ref
   broadcastResultsReadyRef.current = broadcastResultsReady;
 
-  // In dev mode (no real Supabase), simulate other players answering
-  useEffect(() => {
-    const isDevMode = roomCode?.startsWith('DEV');
-    if (isDevMode) {
-      startMockSubmissions();
-      return () => stopMockSubmissions();
+  const handleTimerExpire = () => {
+    if (roundId && room_id) {
+      supabase.functions.invoke('expire-round', {
+        body: { room_id, round_id: roundId },
+      });
+      // Navigation driven by the round:results broadcast from expire-round
     }
-  }, []);
+  };
 
   const handleSelect = (qId: number) => setSelectedId(qId);
 
@@ -170,6 +183,12 @@ export default function AnswerPhaseScreen() {
           <Text style={styles.headerLabel}>
             WHICH QUESTION DID {qmPlayer?.displayName?.toUpperCase()} GET?
           </Text>
+          {answerPhaseStartedAt && (
+            <CountdownTimer
+              answerPhaseStartedAt={answerPhaseStartedAt}
+              onExpire={handleTimerExpire}
+            />
+          )}
         </View>
 
         <GuessOptionList
@@ -223,8 +242,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   lockedBadgeText: {
-    ...Typography.label,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     color: Colors.black,
+    textTransform: 'uppercase',
   },
   waitingTitle: {
     ...Typography.display,

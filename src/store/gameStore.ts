@@ -34,6 +34,9 @@ interface GameState {
   visibleQuestionIds: number[];  // 10 IDs shown to answerers (1 real + 9 decoys)
   usedQuestionIds: number[];     // tracks used questions across session
 
+  // Timer
+  answerPhaseStartedAt: string | null;  // ISO timestamp, set when QM triggers answer phase
+
   // Answers for current round
   submissions: Record<string, number>;  // playerId → guessedQuestionId
 
@@ -49,6 +52,9 @@ interface GameActions {
   isQM: () => boolean;
   getQMPlayer: () => Player | undefined;
   getNextQMPlayer: () => Player | undefined;
+
+  // Timer
+  setAnswerPhaseStartedAt: (ts: string) => void;
 
   // Phase transitions
   advancePhase: () => void;
@@ -71,6 +77,7 @@ interface GameActions {
     initialRound?: { qmPlayerId: string; questionId: number; visibleQuestionIds: number[]; roundId: string }
   ) => void;
   resetGame: () => void;
+  removePlayer: (playerId: string) => void;
 }
 
 const pickQuestion = (usedIds: number[]): number => {
@@ -100,6 +107,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   questionId: null,
   visibleQuestionIds: [],
   usedQuestionIds: [],
+  answerPhaseStartedAt: null,
   submissions: {},
   scores: {},
   roundResults: [],
@@ -122,6 +130,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const nextIdx = (currentIdx + 1) % players.length;
     return players[nextIdx];
   },
+
+  setAnswerPhaseStartedAt: (ts: string) => set({ answerPhaseStartedAt: ts }),
 
   // Phase transitions
   advancePhase: () => {
@@ -229,6 +239,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       visibleQuestionIds: payload.visibleQuestionIds,
       usedQuestionIds: [...state.usedQuestionIds, payload.questionId],
       players: payload.players,
+      answerPhaseStartedAt: null,
       submissions: {},
       phase: 'round_start',
     }));
@@ -274,6 +285,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
   },
 
+  // Remove a player who has left the game mid-round
+  removePlayer: (playerId) => {
+    set((state) => ({
+      players: state.players.filter((p) => p.id !== playerId),
+    }));
+  },
+
   // Full reset
   resetGame: () => {
     set({
@@ -287,6 +305,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       questionId: null,
       visibleQuestionIds: [],
       usedQuestionIds: [],
+      answerPhaseStartedAt: null,
       submissions: {},
       scores: {},
       roundResults: [],

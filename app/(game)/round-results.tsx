@@ -11,6 +11,8 @@ import Animated, {
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { ResultSplash } from '../../src/components/game/ResultSplash';
 import { useGameStore } from '../../src/store/gameStore';
+import { useGameChannel } from '../../src/hooks/useGameChannel';
+import { usePlayerStore } from '../../src/stores/playerStore';
 import { Colors, Spacing, Typography, Radius } from '../../src/theme';
 import questionBank from '../../src/data/questionBank.json';
 
@@ -25,6 +27,14 @@ export default function RoundResultsScreen() {
   const players = useGameStore((s) => s.players);
   const roundResults = useGameStore((s) => s.roundResults);
   const advancePhase = useGameStore((s) => s.advancePhase);
+  const roomCode = useGameStore((s) => s.roomCode);
+
+  useGameChannel(roomCode ?? '', {
+    onGameEnded: () => {
+      usePlayerStore.getState().clearRoom();
+      router.replace('/');
+    },
+  });
 
   const qmPlayer = players.find((p) => p.id === qmPlayerId);
   const latestResult = roundResults[roundResults.length - 1];
@@ -153,8 +163,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   autoAdvanceHint: {
-    ...Typography.helper,
+    ...Typography.body,
+    color: Colors.muted,
     textAlign: 'center',
+    fontSize: 12,
   },
 
   // Answerer result

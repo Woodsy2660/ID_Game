@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
 import { useAuthContext } from '../_layout'
 import { usePlayerStore } from '../../src/stores/playerStore'
+import { useGameStore } from '../../src/store/gameStore'
 import { Button } from '../../src/components/ui/Button'
 import { BackButton } from '../../src/components/ui/BackButton'
 import { Colors, Spacing, Typography, Radius, Layout } from '../../src/theme'
@@ -21,6 +22,7 @@ export default function JoinScreen() {
   const { user, setDisplayName } = useAuthContext()
   const setPlayer = usePlayerStore((s) => s.setPlayer)
   const setRoom = usePlayerStore((s) => s.setRoom)
+  const setAnswerPhaseStartedAt = useGameStore((s) => s.setAnswerPhaseStartedAt)
 
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
@@ -50,6 +52,8 @@ export default function JoinScreen() {
         setErrorMsg('Room not found. Check the code and try again.')
       } else if (errorCode === 'ROOM_NOT_IN_LOBBY') {
         setErrorMsg('This game has already started.')
+      } else if (errorCode === 'ROOM_CLOSED') {
+        setErrorMsg('This game has already ended.')
       } else {
         setErrorMsg('Something went wrong. Try again.')
       }
@@ -57,7 +61,52 @@ export default function JoinScreen() {
     }
 
     setRoom(data.room_id, data.room_code, false)
-    router.replace('/(game)/lobby')
+
+    if (data.is_late_join) {
+      if (data.answer_phase_started_at) {
+        setAnswerPhaseStartedAt(data.answer_phase_started_at)
+      }
+
+      // Initialize game store so all screens have player list, QM, question, etc.
+      const players = data.players ?? []
+      const hasRound = data.current_round_id && data.question_id && data.visible_question_ids?.length > 0
+      useGameStore.getState().initGame(
+        players,
+        user!.id,
+        data.room_code,
+        hasRound ? {
+          qmPlayerId: data.current_qm_id,
+          questionId: data.question_id,
+          visibleQuestionIds: data.visible_question_ids,
+          roundId: data.current_round_id,
+        } : undefined
+      )
+
+      const isQM = data.current_qm_id === user?.id
+
+      switch (data.current_status) {
+        case 'qm_active':
+          router.replace(isQM ? '/(game)/qm-active' : '/(game)/waiting')
+          break
+        case 'answer_phase':
+          // QM goes to qm-active (their tracking view), answerers go to answer-phase
+          // Pass rejoin=1 so qm-active can skip the slot machine animation
+          if (isQM) {
+            router.replace({ pathname: '/(game)/qm-active', params: { rejoin: '1' } })
+          } else {
+            router.replace('/(game)/answer-phase')
+          }
+          break
+        case 'round_results':
+        case 'leaderboard':
+          router.replace('/(game)/leaderboard')
+          break
+        default:
+          router.replace('/(game)/round-start')
+      }
+    } else {
+      router.replace('/(game)/lobby')
+    }
   }
 
   const handleChangeCode = (text: string) => {

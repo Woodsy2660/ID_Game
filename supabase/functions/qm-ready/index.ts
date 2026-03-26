@@ -6,13 +6,11 @@ const corsHeaders = {
 }
 
 /**
- * qm-ready — called by the QM when they tap "Let Them Guess!".
+ * qm-ready — called by the QM after the reveal timer fires.
  *
- * Broadcasts `qm:ready` from the server so all subscriber clients
- * (answerers) reliably receive it and navigate to answer-phase.
- *
- * Client-side broadcasts are unreliable if the sender's WebSocket
- * hasn't fully subscribed yet; server-side broadcasts always work.
+ * 1. Writes answer_phase_started_at = now() to the current round row
+ * 2. Updates room status to answer_phase
+ * 3. Broadcasts qm:ready with the timestamp so all clients can sync their timers
  */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -48,6 +46,30 @@ Deno.serve(async (req) => {
 
   const { room_code } = await req.json()
 
+  // Fetch the room to get room_id and current round
+  const { data: room } = await supabaseAdmin
+    .from('rooms')
+    .select('id, current_round')
+    .eq('code', room_code)
+    .single()
+
+  const answerPhaseStartedAt = new Date().toISOString()
+
+  if (room) {
+    // Write timestamp to the current round row
+    await supabaseAdmin
+      .from('rounds')
+      .update({ answer_phase_started_at: answerPhaseStartedAt })
+      .eq('room_id', room.id)
+      .eq('round_number', room.current_round)
+
+    // Update room status to answer_phase
+    await supabaseAdmin
+      .from('rooms')
+      .update({ status: 'answer_phase' })
+      .eq('id', room.id)
+  }
+
   const channel = supabaseAdmin.channel(`game:${room_code}`)
   await new Promise<void>((resolve) => {
     channel.subscribe(async (status) => {
@@ -55,7 +77,7 @@ Deno.serve(async (req) => {
         await channel.send({
           type: 'broadcast',
           event: 'qm:ready',
-          payload: {},
+          payload: { answerPhaseStartedAt },
         })
         await supabaseAdmin.removeChannel(channel)
         resolve()
@@ -63,7 +85,7 @@ Deno.serve(async (req) => {
     })
   })
 
-  return new Response(JSON.stringify({ ok: true }), {
+  return new Response(JSON.stringify({ ok: true, answerPhaseStartedAt }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })

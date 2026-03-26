@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Animated, Dimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { SlotMachine } from '../../src/components/game/SlotMachine';
 import { IDCard } from '../../src/components/game/IDCard';
 import { SubmissionTracker } from '../../src/components/game/SubmissionTracker';
+import { CountdownTimer } from '../../src/components/CountdownTimer';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
+import { usePlayerStore } from '../../src/stores/playerStore';
 import type { ResultsReadyPayload } from '../../src/hooks/useGameChannel';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, Typography } from '../../src/theme';
@@ -25,6 +27,8 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
  */
 export default function QMActiveScreen() {
   const router = useRouter();
+  const { rejoin } = useLocalSearchParams<{ rejoin?: string }>();
+  const isRejoinAnswerPhase = rejoin === '1';
   const isQM = useGameStore((s) => s.isQM);
   const roomCode = useGameStore((s) => s.roomCode);
   const roundId = useGameStore((s) => s.roundId);
@@ -32,16 +36,20 @@ export default function QMActiveScreen() {
   const visibleQuestionIds = useGameStore((s) => s.visibleQuestionIds);
   const qmPlayer = useGameStore((s) => s.getQMPlayer());
   const advancePhase = useGameStore((s) => s.advancePhase);
+  const setAnswerPhaseStartedAt = useGameStore((s) => s.setAnswerPhaseStartedAt);
+  const answerPhaseStartedAt = useGameStore((s) => s.answerPhaseStartedAt);
   const submitAnswer = useGameStore((s) => s.submitAnswer);
   const syncSubmissions = useGameStore((s) => s.syncSubmissions);
   const computeResults = useGameStore((s) => s.computeResults);
   const players = useGameStore((s) => s.players);
   const submissions = useGameStore((s) => s.submissions);
   const qmPlayerId = useGameStore((s) => s.qmPlayerId);
+  const { room_id } = usePlayerStore();
 
-  const [revealed, setRevealed] = useState(false);
-  const [showTracker, setShowTracker] = useState(false);
-  const [slideComplete, setSlideComplete] = useState(false);
+  // When rejoining during answer_phase, skip the slot machine animation entirely
+  const [revealed, setRevealed] = useState(isRejoinAnswerPhase);
+  const [showTracker, setShowTracker] = useState(isRejoinAnswerPhase);
+  const [slideComplete, setSlideComplete] = useState(isRejoinAnswerPhase);
 
   const question = questionBank.find((q) => q.id === questionId);
   const answerers = players.filter((p) => p.id !== qmPlayerId);
@@ -86,8 +94,15 @@ export default function QMActiveScreen() {
   };
 
   useGameChannel(roomCode ?? '', {
-    // Answerers navigate to answer-phase when they receive this
-    onQMReady: isQM() ? undefined : navigateToAnswerPhase,
+    onGameEnded: () => {
+      usePlayerStore.getState().clearRoom();
+      router.replace('/');
+    },
+    // Answerers navigate to answer-phase when they receive this; capture timer start
+    onQMReady: isQM() ? undefined : ({ answerPhaseStartedAt: startedAt }) => {
+      if (startedAt) setAnswerPhaseStartedAt(startedAt);
+      navigateToAnswerPhase();
+    },
 
     // QM tracks incoming submissions; navigates when all are in
     onAnswerSubmitted: isQM() ? ({ playerId, guessedQuestionId }) => {
@@ -103,6 +118,14 @@ export default function QMActiveScreen() {
       syncSubmissions(authoritative);
       navigateToResults();
     } : undefined,
+    // A player left mid-round — QM rechecks if remaining answerers have all submitted
+    onPlayerLeft: isQM() ? () => {
+      if (useGameStore.getState().allAnswered()) {
+        navigateToResults();
+      }
+    } : undefined,
+    // Timer expired server-side — navigate everyone to results
+    onRoundExpired: () => navigateToResults(),
   });
 
   const handleRevealed = () => {
@@ -125,9 +148,12 @@ export default function QMActiveScreen() {
         if (isDevMode) {
           setShowTracker(true);
         } else {
-          await supabase.functions.invoke('qm-ready', {
+          const { data } = await supabase.functions.invoke('qm-ready', {
             body: { room_code: roomCode },
           });
+          if (data?.answerPhaseStartedAt) {
+            setAnswerPhaseStartedAt(data.answerPhaseStartedAt);
+          }
           setShowTracker(true);
         }
       }, 1500);
@@ -182,9 +208,21 @@ export default function QMActiveScreen() {
               </Animated.View>
             )}
 
-            {/* Submission tracker */}
+            {/* Submission tracker + countdown */}
             {showTracker && (
               <View style={styles.trackerArea}>
+                {answerPhaseStartedAt && (
+                  <CountdownTimer
+                    answerPhaseStartedAt={answerPhaseStartedAt}
+                    onExpire={() => {
+                      if (roundId && room_id) {
+                        supabase.functions.invoke('expire-round', {
+                          body: { room_id, round_id: roundId },
+                        });
+                      }
+                    }}
+                  />
+                )}
                 <SubmissionTracker
                   submitted={submittedCount}
                   total={answerers.length}
@@ -307,6 +345,7 @@ const styles = StyleSheet.create({
   trackerArea: {
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.lg,
+    gap: Spacing.md,
   },
   waitContainer: {
     alignItems: 'center',

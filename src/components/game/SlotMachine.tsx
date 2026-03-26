@@ -38,8 +38,8 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed, compac
   const [reducedMotion, setReducedMotion] = useState(false);
 
   const realQuestion = questionBank.find((q) => q.id === questionId);
-  const correctIndex = visibleQuestionIds.indexOf(questionId);
-  const finalNumber = correctIndex + 1;
+  // Land on the actual question ID (1–186), not the position within the 10 visible options
+  const finalNumber = questionId;
 
   // Animation values
   const shhhOpacity = useSharedValue(0);
