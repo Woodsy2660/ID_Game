@@ -243,7 +243,8 @@ export default function QMActiveScreen() {
                 <SubmissionTracker
                   submitted={submittedCount}
                   total={answerers.length}
-                  playerNames={answerers.map((p) => p.displayName)}
+                  players={answerers}
+                  submittedPlayerIds={new Set(Object.keys(submissions))}
                 />
               </View>
             )}

@@ -3,17 +3,23 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors, Spacing, Typography, Radius } from '../../theme';
 import { ProgressBar } from '../ui/ProgressBar';
 
+interface PlayerInfo {
+  id: string;
+  displayName: string;
+}
+
 interface Props {
   submitted: number;
   total: number;
-  playerNames?: string[];
+  players?: PlayerInfo[];
+  submittedPlayerIds?: Set<string>;
 }
 
 /**
  * Shows submission progress: "3 / 5 answered" with a progress bar.
  * Used on the QM screen during answer_phase.
  */
-export function SubmissionTracker({ submitted, total, playerNames }: Props) {
+export function SubmissionTracker({ submitted, total, players, submittedPlayerIds }: Props) {
   const progress = total > 0 ? submitted / total : 0;
 
   return (
@@ -26,16 +32,19 @@ export function SubmissionTracker({ submitted, total, playerNames }: Props) {
         </Text>
       </View>
       <ProgressBar progress={progress} color={Colors.tertiary} />
-      {playerNames && playerNames.length > 0 && (
+      {players && players.length > 0 && (
         <View style={styles.names}>
-          {playerNames.map((name, i) => (
-            <View key={i} style={styles.dot}>
-              <View style={[styles.indicator, i < submitted && styles.indicatorActive]} />
-              <Text style={[styles.name, i < submitted && styles.nameActive]}>
-                {name}
-              </Text>
-            </View>
-          ))}
+          {players.map((player) => {
+            const hasSubmitted = submittedPlayerIds?.has(player.id) ?? false;
+            return (
+              <View key={player.id} style={styles.dot}>
+                <View style={[styles.indicator, hasSubmitted && styles.indicatorActive]} />
+                <Text style={[styles.name, hasSubmitted && styles.nameActive]}>
+                  {player.displayName}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       )}
     </View>
