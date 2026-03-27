@@ -62,8 +62,7 @@ export default function LobbyScreen() {
   }
 
   return (
-    <ScreenContainer>
-      <BackButton onPress={() => { clearRoom(); router.replace('/(auth)'); }} />
+    <ScreenContainer overlay={<BackButton onPress={() => { clearRoom(); router.replace('/(auth)'); }} />}>
 
       {/* Room code */}
       <View style={styles.header}>

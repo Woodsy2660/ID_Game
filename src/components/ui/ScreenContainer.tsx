@@ -8,11 +8,13 @@ interface Props {
   children: React.ReactNode;
   centered?: boolean;
   style?: ViewStyle;
+  overlay?: React.ReactNode;
 }
 
-export function ScreenContainer({ children, centered, style }: Props) {
+export function ScreenContainer({ children, centered, style, overlay }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
+      {overlay}
       <View style={[styles.container, centered && styles.centered, style]}>
         {children}
       </View>

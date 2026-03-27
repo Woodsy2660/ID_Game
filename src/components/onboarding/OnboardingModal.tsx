@@ -32,7 +32,7 @@ const SLIDE_DATA = [
   },
   {
     title: 'One player sees a secret question',
-    body: 'You are now the Question Master.',
+    body: 'They are now the Question Master.',
   },
   {
     title: 'Rank the group',
