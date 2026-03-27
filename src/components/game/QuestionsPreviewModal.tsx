@@ -12,6 +12,8 @@ import {
   StatusBar,
 } from 'react-native';
 import { Colors, Spacing, Typography } from '../../theme';
+import { ScrollFadeOverlay } from '../ui/ScrollFadeOverlay';
+import { useScrollFades } from '../../hooks/useScrollFades';
 import questionBank from '../../data/questionBank.json';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -23,7 +25,11 @@ interface Props {
   onClose: () => void;
 }
 
+const SHEET_BG = '#1C1C1E';
+
 export function QuestionsPreviewModal({ visible, onClose }: Props) {
+  const { showTopFade, showBottomFade, scrollHandler, onContentSizeChange, onLayout: fadeLayout } =
+    useScrollFades();
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
@@ -164,15 +170,22 @@ export function QuestionsPreviewModal({ visible, onClose }: Props) {
           </View>
 
           {/* Question list */}
-          <FlatList
-            data={questionBank}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            initialNumToRender={20}
-            maxToRenderPerBatch={30}
-          />
+          <View style={styles.listWrapper}>
+            <FlatList
+              data={questionBank}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              initialNumToRender={20}
+              maxToRenderPerBatch={30}
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
+              onContentSizeChange={onContentSizeChange}
+              onLayout={fadeLayout}
+            />
+            <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} bg={SHEET_BG} />
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -242,6 +255,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.muted,
     fontWeight: '600',
+  },
+  listWrapper: {
+    flex: 1,
+    position: 'relative',
   },
   listContent: {
     paddingHorizontal: Spacing.lg,

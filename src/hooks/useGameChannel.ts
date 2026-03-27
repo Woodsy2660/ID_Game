@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { removeChannelByName } from '../lib/channelCleanup'
 import type { RoundStartedPayload } from '../store/types'
 import { useGameStore } from '../store/gameStore'
 
@@ -56,6 +57,12 @@ export function useGameChannel(
 
   useEffect(() => {
     if (!roomCode) return
+
+    // Remove ALL existing channel instances for this topic.
+    // supabase.channel() always creates new instances, so useRoom (lobby)
+    // will have left one alive. Having multiple instances on the same topic
+    // causes unreliable message delivery. Clean slate before subscribing.
+    removeChannelByName(`game:${roomCode}`)
 
     const channel = supabase
       .channel(`game:${roomCode}`)

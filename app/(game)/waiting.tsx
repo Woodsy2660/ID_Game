@@ -7,6 +7,7 @@ import { usePlayerStore } from '../../src/stores/playerStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, Typography } from '../../src/theme';
+import { removeAllChannels } from '../../src/lib/channelCleanup';
 
 /**
  * Waiting screen — shown to late joiners who arrive during qm_active status.
@@ -48,6 +49,7 @@ export default function WaitingScreen() {
 
   useGameChannel(roomCode ?? room_code ?? '', {
     onGameEnded: () => {
+      removeAllChannels();
       usePlayerStore.getState().clearRoom();
       router.replace('/');
     },

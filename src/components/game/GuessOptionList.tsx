@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors, Spacing, Typography, Radius } from '../../theme';
+import { ScrollFadeOverlay } from '../ui/ScrollFadeOverlay';
+import { useScrollFades } from '../../hooks/useScrollFades';
 import questionBank from '../../data/questionBank.json';
 
 interface Props {
@@ -21,54 +23,67 @@ export function GuessOptionList({ visibleQuestionIds, onSelect, disabled, select
     return { id, text: q?.text ?? 'Unknown question' };
   });
 
-  return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.list}
-      showsVerticalScrollIndicator={false}
-    >
-      {questions.map((q, index) => {
-        const isSelected = selectedId === q.id;
+  const { showTopFade, showBottomFade, scrollHandler, onContentSizeChange, onLayout } =
+    useScrollFades();
 
-        return (
-          <Animated.View
-            key={q.id}
-            entering={FadeIn.delay(index * 50).duration(300)}
-          >
-            <Pressable
-              onPress={() => !disabled && onSelect(q.id)}
-              disabled={disabled}
-              style={({ pressed }) => [
-                styles.option,
-                isSelected && styles.optionSelected,
-                pressed && !disabled && styles.optionPressed,
-                disabled && !isSelected && styles.optionDisabled,
-              ]}
+  return (
+    <View style={styles.scrollWrapper}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        onContentSizeChange={onContentSizeChange}
+        onLayout={onLayout}
+      >
+        {questions.map((q, index) => {
+          const isSelected = selectedId === q.id;
+
+          return (
+            <Animated.View
+              key={q.id}
+              entering={FadeIn.delay(index * 50).duration(300)}
             >
-              <View style={[styles.numberBadge, isSelected && styles.numberBadgeSelected]}>
-                <Text style={[styles.optionNumber, isSelected && styles.optionNumberSelected]}>
-                  {index + 1}
-                </Text>
-              </View>
-              <Text
-                style={[
-                  styles.optionText,
-                  isSelected && styles.optionTextSelected,
-                  disabled && !isSelected && styles.optionTextDisabled,
+              <Pressable
+                onPress={() => !disabled && onSelect(q.id)}
+                disabled={disabled}
+                style={({ pressed }) => [
+                  styles.option,
+                  isSelected && styles.optionSelected,
+                  pressed && !disabled && styles.optionPressed,
+                  disabled && !isSelected && styles.optionDisabled,
                 ]}
-                numberOfLines={2}
               >
-                {q.text}
-              </Text>
-            </Pressable>
-          </Animated.View>
-        );
-      })}
-    </ScrollView>
+                <View style={[styles.numberBadge, isSelected && styles.numberBadgeSelected]}>
+                  <Text style={[styles.optionNumber, isSelected && styles.optionNumberSelected]}>
+                    {index + 1}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.optionText,
+                    isSelected && styles.optionTextSelected,
+                    disabled && !isSelected && styles.optionTextDisabled,
+                  ]}
+                >
+                  {q.text}
+                </Text>
+              </Pressable>
+            </Animated.View>
+          );
+        })}
+      </ScrollView>
+      <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
   scroll: {
     flex: 1,
   },

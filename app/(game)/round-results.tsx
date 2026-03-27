@@ -13,7 +13,10 @@ import { ResultSplash } from '../../src/components/game/ResultSplash';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
 import { usePlayerStore } from '../../src/stores/playerStore';
+import { removeAllChannels } from '../../src/lib/channelCleanup';
 import { Colors, Spacing, Typography, Radius } from '../../src/theme';
+import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay';
+import { useScrollFades } from '../../src/hooks/useScrollFades';
 import questionBank from '../../src/data/questionBank.json';
 
 /**
@@ -31,6 +34,7 @@ export default function RoundResultsScreen() {
 
   useGameChannel(roomCode ?? '', {
     onGameEnded: () => {
+      removeAllChannels();
       usePlayerStore.getState().clearRoom();
       router.replace('/');
     },
@@ -38,6 +42,14 @@ export default function RoundResultsScreen() {
 
   const qmPlayer = players.find((p) => p.id === qmPlayerId);
   const latestResult = roundResults[roundResults.length - 1];
+
+  const {
+    showTopFade,
+    showBottomFade,
+    scrollHandler,
+    onContentSizeChange,
+    onLayout: fadeLayout,
+  } = useScrollFades();
   const question = questionBank.find((q) => q.id === latestResult?.questionId);
 
   // Determine if local player was correct
@@ -59,21 +71,28 @@ export default function RoundResultsScreen() {
   if (isQM()) {
     return (
       <ScreenContainer>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.qmHeader}>WHO GUESSED CORRECTLY?</Text>
-          {latestResult && (
-            <ResultSplash
-              questionId={latestResult.questionId}
-              qmName={qmPlayer?.displayName ?? '???'}
-              answers={latestResult.answers}
-              players={players}
-            />
-          )}
-        </ScrollView>
+        <View style={styles.scrollWrapper}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
+            onContentSizeChange={onContentSizeChange}
+            onLayout={fadeLayout}
+          >
+            <Text style={styles.qmHeader}>WHO GUESSED CORRECTLY?</Text>
+            {latestResult && (
+              <ResultSplash
+                questionId={latestResult.questionId}
+                qmName={qmPlayer?.displayName ?? '???'}
+                answers={latestResult.answers}
+                players={players}
+              />
+            )}
+          </ScrollView>
+          <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} />
+        </View>
         <View style={styles.footer}>
           <Text style={styles.autoAdvanceHint}>Heading to leaderboard...</Text>
         </View>
@@ -145,6 +164,10 @@ function AnswererResultView({
 
 const styles = StyleSheet.create({
   // QM layout
+  scrollWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
   scroll: {
     flex: 1,
   },

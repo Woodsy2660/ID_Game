@@ -10,6 +10,9 @@ import { Button } from '../../src/components/ui/Button'
 import { Card } from '../../src/components/ui/Card'
 import { Badge } from '../../src/components/ui/Badge'
 import { Colors, Spacing, Typography, Layout } from '../../src/theme'
+import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay'
+import { useScrollFades } from '../../src/hooks/useScrollFades'
+import { removeAllChannels } from '../../src/lib/channelCleanup'
 import { BackButton } from '../../src/components/ui/BackButton'
 import { QuestionsPreviewButton } from '../../src/components/game/QuestionsPreviewButton'
 import { QuestionsPreviewModal } from '../../src/components/game/QuestionsPreviewModal'
@@ -46,6 +49,7 @@ export default function LobbyScreen() {
   }, [router, player_id, room_code])
 
   const [previewVisible, setPreviewVisible] = useState(false)
+  const { showTopFade, showBottomFade, scrollHandler, onContentSizeChange, onLayout } = useScrollFades()
 
   const { players, isConnected } = useRoom(
     room_code ?? '',
@@ -55,14 +59,28 @@ export default function LobbyScreen() {
     handleGameStart
   )
 
+  const [starting, setStarting] = useState(false)
+
   const handleStartGame = async () => {
-    await supabase.functions.invoke('start-game', {
-      body: { room_id },
-    })
+    if (starting) return
+    setStarting(true)
+    try {
+      const { error } = await supabase.functions.invoke('start-game', {
+        body: { room_id },
+      })
+      if (error) {
+        console.warn('[lobby] start-game error:', error)
+        setStarting(false)
+      }
+      // On success, navigation happens via game:started broadcast — don't reset starting
+    } catch (e) {
+      console.warn('[lobby] start-game network error:', e)
+      setStarting(false)
+    }
   }
 
   return (
-    <ScreenContainer overlay={<BackButton onPress={() => { clearRoom(); router.replace('/(auth)'); }} />}>
+    <ScreenContainer overlay={<BackButton onPress={() => { removeAllChannels(); clearRoom(); router.replace('/(auth)'); }} />}>
 
       {/* Room code */}
       <View style={styles.header}>
@@ -87,22 +105,32 @@ export default function LobbyScreen() {
         <Text style={styles.sectionLabel}>
           PLAYERS{players.length > 0 ? ` · ${players.length}` : ''}
         </Text>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.playerList}>
-          {players.map((p) => {
-            const isYou = p.player_id === player_id
-            return (
-              <Card
-                key={p.player_id}
-                style={isYou ? { ...styles.playerCard, ...styles.playerCardYou } : styles.playerCard}
-              >
-                <Text style={[styles.playerName, isYou && styles.playerNameYou]}>
-                  {p.display_name}{isYou ? ' (you)' : ''}
-                </Text>
-                {p.is_host && <Badge label="HOST" variant="primary" />}
-              </Card>
-            )
-          })}
-        </ScrollView>
+        <View style={styles.scrollWrapper}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.playerList}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
+            onContentSizeChange={onContentSizeChange}
+            onLayout={onLayout}
+          >
+            {players.map((p) => {
+              const isYou = p.player_id === player_id
+              return (
+                <Card
+                  key={p.player_id}
+                  style={isYou ? { ...styles.playerCard, ...styles.playerCardYou } : styles.playerCard}
+                >
+                  <Text style={[styles.playerName, isYou && styles.playerNameYou]}>
+                    {p.display_name}{isYou ? ' (you)' : ''}
+                  </Text>
+                  {p.is_host && <Badge label="HOST" variant="primary" />}
+                </Card>
+              )
+            })}
+          </ScrollView>
+          <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} />
+        </View>
       </View>
 
       {/* Footer */}
@@ -113,9 +141,9 @@ export default function LobbyScreen() {
               <Text style={styles.waitingHint}>Need at least 2 players to start</Text>
             )}
             <Button
-              title="Start Game"
+              title={starting ? 'Starting...' : 'Start Game'}
               onPress={handleStartGame}
-              disabled={players.length < 2}
+              disabled={players.length < 2 || starting}
             />
           </>
         ) : (
@@ -153,6 +181,10 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     gap: Spacing.sm,
+  },
+  scrollWrapper: {
+    flex: 1,
+    position: 'relative',
   },
   playerList: {
     gap: Layout.listItemGap,

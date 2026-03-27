@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
   const { data: room } = await supabase
     .from('rooms')
-    .select('id, status, current_qm_id, current_round')
+    .select('id, code, status, current_qm_id, current_round')
     .ilike('code', room_code)
     .maybeSingle()
 
@@ -74,8 +74,11 @@ Deno.serve(async (req) => {
     is_late_join: isLateJoin,
   }, { onConflict: 'room_id,player_id' })
 
+  // Always return the DB-stored code (not user input) to ensure consistent casing
+  const canonicalCode = room.code
+
   if (!isLateJoin) {
-    return new Response(JSON.stringify({ room_id: room.id, room_code, is_late_join: false }), {
+    return new Response(JSON.stringify({ room_id: room.id, room_code: canonicalCode, is_late_join: false }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
@@ -140,7 +143,7 @@ Deno.serve(async (req) => {
 
   return new Response(JSON.stringify({
     room_id: room.id,
-    room_code,
+    room_code: canonicalCode,
     is_late_join: true,
     current_status: effectiveStatus,
     current_qm_id: room.current_qm_id,

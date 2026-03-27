@@ -8,6 +8,7 @@ import { useAuth } from '../src/hooks/useAuth'
 import { usePlayerStore } from '../src/stores/playerStore'
 import { supabase } from '../src/lib/supabase'
 import { RejoinPrompt } from '../src/components/RejoinPrompt'
+import { removeAllChannels } from '../src/lib/channelCleanup'
 import { Colors } from '../src/theme'
 
 interface AuthContextValue {
@@ -59,6 +60,7 @@ export default function RootLayout() {
         .single()
 
       if (!room || room.status === 'closed' || room.status === 'lobby') {
+        removeAllChannels()
         usePlayerStore.getState().clearRoom()
         return
       }

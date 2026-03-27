@@ -11,6 +11,7 @@ import { usePlayerStore } from '../../src/stores/playerStore';
 import { supabase } from '../../src/lib/supabase';
 import { CountdownTimer } from '../../src/components/CountdownTimer';
 import { Colors, Spacing, Typography } from '../../src/theme';
+import { removeAllChannels } from '../../src/lib/channelCleanup';
 
 /**
  * Answer Phase screen — splits into two views:
@@ -76,6 +77,7 @@ export default function AnswerPhaseScreen() {
 
   const { broadcastAnswer, broadcastResultsReady } = useGameChannel(roomCode ?? '', {
     onGameEnded: () => {
+      removeAllChannels();
       usePlayerStore.getState().clearRoom();
       router.replace('/');
     },
@@ -216,6 +218,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: Spacing.lg,
+    gap: Spacing.lg,
   },
   headerLabel: {
     ...Typography.label,

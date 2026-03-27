@@ -1,25 +1,24 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   Pressable,
+  TouchableOpacity,
   StyleSheet,
-  Alert,
-  Platform,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-  LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { LeaderboardIDCard } from '../../src/components/game/LeaderboardIDCard';
 import { LeaderboardCompactRow } from '../../src/components/game/LeaderboardCompactRow';
+import { EndGameModal } from '../../src/components/game/EndGameModal';
+import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay';
+import { useScrollFades } from '../../src/hooks/useScrollFades';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { supabase } from '../../src/lib/supabase';
+import { removeAllChannels } from '../../src/lib/channelCleanup';
 
 /**
  * Leaderboard screen — shows cumulative scores after each round.
@@ -54,12 +53,16 @@ export default function LeaderboardScreen() {
 
   const [loading, setLoading] = useState(false);
   const [endingGame, setEndingGame] = useState(false);
-  const [showFade, setShowFade] = useState(false);
+  const [showEndModal, setShowEndModal] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Track whether content overflows the scroll container
-  const scrollContentHeight = useRef(0);
-  const scrollViewHeight = useRef(0);
+  const {
+    showTopFade,
+    showBottomFade,
+    scrollHandler,
+    onContentSizeChange: fadeContentSizeChange,
+    onLayout: fadeLayout,
+  } = useScrollFades();
 
   useGameChannel(roomCode ?? '', {
     onRoundStarted: (payload) => {
@@ -72,6 +75,7 @@ export default function LeaderboardScreen() {
       router.replace('/(game)/round-start');
     },
     onGameEnded: () => {
+      removeAllChannels();
       usePlayerStore.getState().clearRoom();
       router.replace('/');
     },
@@ -149,22 +153,11 @@ export default function LeaderboardScreen() {
     // Navigation handled by onGameEnded broadcast
   };
 
-  const handleEndGame = () => {
-    // Alert.alert async onPress is unreliable on React Native Web — use Platform branch
-    if (Platform.OS === 'web') {
-      if (window.confirm('End the game for everyone?')) {
-        doEndGame();
-      }
-    } else {
-      Alert.alert(
-        'End Game',
-        'Are you sure you want to end the game for everyone?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'End Game', style: 'destructive', onPress: doEndGame },
-        ]
-      );
-    }
+  const handleEndGame = () => setShowEndModal(true);
+
+  const handleConfirmEndGame = () => {
+    setShowEndModal(false);
+    doEndGame();
   };
 
   // Sort players by score descending
@@ -176,41 +169,21 @@ export default function LeaderboardScreen() {
   const rest = ranked.slice(3);
   const nextQM = getNextQMPlayer();
 
-  const updateFadeVisibility = useCallback(() => {
-    const contentH = scrollContentHeight.current;
-    const viewH = scrollViewHeight.current;
-    setShowFade(contentH > viewH + 10);
-  }, []);
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-      const distanceFromBottom =
-        contentSize.height - layoutMeasurement.height - contentOffset.y;
-      setShowFade(distanceFromBottom > 10);
-    },
-    []
-  );
-
-  const handleContentSizeChange = useCallback(
-    (_w: number, h: number) => {
-      scrollContentHeight.current = h;
-      updateFadeVisibility();
-    },
-    [updateFadeVisibility]
-  );
-
-  const handleLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      scrollViewHeight.current = e.nativeEvent.layout.height;
-      updateFadeVisibility();
-    },
-    [updateFadeVisibility]
-  );
-
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
+        {/* Top-right "End game" action — host only */}
+        {isHost && (
+          <TouchableOpacity
+            onPress={handleEndGame}
+            style={styles.endGameAction}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            disabled={loading || endingGame}
+          >
+            <Text style={styles.endGameActionText}>End game</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Leaderboard</Text>
@@ -227,10 +200,10 @@ export default function LeaderboardScreen() {
               ranked.length >= 4 && ranked.length < 7 && styles.scrollContentCenteredSmall,
             ]}
             showsVerticalScrollIndicator={false}
-            onScroll={handleScroll}
+            onScroll={scrollHandler}
             scrollEventThrottle={16}
-            onContentSizeChange={handleContentSizeChange}
-            onLayout={handleLayout}
+            onContentSizeChange={fadeContentSizeChange}
+            onLayout={fadeLayout}
           >
             {ranked.length < 7 ? (
               /* <7 players — stack all podium cards vertically as large cards, centered */
@@ -302,14 +275,7 @@ export default function LeaderboardScreen() {
             )}
           </ScrollView>
 
-          {/* Fade gradient at bottom of scroll */}
-          {showFade && (
-            <LinearGradient
-              colors={['transparent', '#121212']}
-              style={styles.fadeGradient}
-              pointerEvents="none"
-            />
-          )}
+          <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} />
         </View>
 
         {/* Footer — always show next QM + host CTA regardless of player count */}
@@ -320,34 +286,19 @@ export default function LeaderboardScreen() {
             </Text>
           )}
           {isHost ? (
-            <>
-              <Pressable
-                onPress={handleNextRound}
-                disabled={loading || endingGame}
-                style={({ pressed }) => [
-                  styles.ctaButton,
-                  pressed && !loading && !endingGame && styles.ctaPressed,
-                  (loading || endingGame) && styles.ctaDisabled,
-                ]}
-              >
-                <Text style={styles.ctaText}>
-                  {loading ? 'STARTING...' : 'NEXT ROUND'}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={handleEndGame}
-                disabled={loading || endingGame}
-                style={({ pressed }) => [
-                  styles.endButton,
-                  pressed && !loading && !endingGame && styles.ctaPressed,
-                  (loading || endingGame) && styles.ctaDisabled,
-                ]}
-              >
-                <Text style={styles.endButtonText}>
-                  {endingGame ? 'ENDING...' : 'END GAME'}
-                </Text>
-              </Pressable>
-            </>
+            <Pressable
+              onPress={handleNextRound}
+              disabled={loading || endingGame}
+              style={({ pressed }) => [
+                styles.ctaButton,
+                pressed && !loading && !endingGame && styles.ctaPressed,
+                (loading || endingGame) && styles.ctaDisabled,
+              ]}
+            >
+              <Text style={styles.ctaText}>
+                {loading ? 'STARTING...' : 'NEXT ROUND'}
+              </Text>
+            </Pressable>
           ) : (
             <Text style={styles.waitingText}>
               Waiting for host to start next round...
@@ -355,6 +306,14 @@ export default function LeaderboardScreen() {
           )}
         </View>
       </View>
+
+      {/* End game confirmation modal */}
+      <EndGameModal
+        visible={showEndModal}
+        loading={endingGame}
+        onKeepPlaying={() => setShowEndModal(false)}
+        onEndGame={handleConfirmEndGame}
+      />
     </SafeAreaView>
   );
 }
@@ -370,9 +329,25 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 32,
   },
+  endGameAction: {
+    position: 'absolute',
+    top: 16,
+    right: 20,
+    zIndex: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  endGameActionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.75)',
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 36,
   },
   title: {
     fontSize: 28,
@@ -427,13 +402,6 @@ const styles = StyleSheet.create({
   sectionGap: {
     height: 6,
   },
-  fadeGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 64,
-  },
   footer: {
     alignItems: 'center',
     paddingTop: 16,
@@ -471,22 +439,6 @@ const styles = StyleSheet.create({
     color: '#121212',
     textTransform: 'uppercase',
     letterSpacing: 0.98,
-  },
-  endButton: {
-    width: '100%',
-    height: 44,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#555555',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  endButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#555555',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
   waitingText: {
     fontSize: 14,

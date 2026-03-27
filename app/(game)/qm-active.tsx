@@ -11,7 +11,10 @@ import { useGameChannel } from '../../src/hooks/useGameChannel';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import type { ResultsReadyPayload } from '../../src/hooks/useGameChannel';
 import { supabase } from '../../src/lib/supabase';
+import { removeAllChannels } from '../../src/lib/channelCleanup';
 import { Colors, Spacing, Typography } from '../../src/theme';
+import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay';
+import { useScrollFades } from '../../src/hooks/useScrollFades';
 import questionBank from '../../src/data/questionBank.json';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -55,6 +58,14 @@ export default function QMActiveScreen() {
   const answerers = players.filter((p) => p.id !== qmPlayerId);
   const submittedCount = Object.keys(submissions).length;
 
+  const {
+    showTopFade: qmTopFade,
+    showBottomFade: qmBottomFade,
+    scrollHandler: qmScrollHandler,
+    onContentSizeChange: qmContentSizeChange,
+    onLayout: qmLayout,
+  } = useScrollFades();
+
   // Animation: slide the question card from center to top
   const slideAnim = useRef(new Animated.Value(0)).current; // 0 = center, 1 = top
 
@@ -95,6 +106,7 @@ export default function QMActiveScreen() {
 
   useGameChannel(roomCode ?? '', {
     onGameEnded: () => {
+      removeAllChannels();
       usePlayerStore.getState().clearRoom();
       router.replace('/');
     },
@@ -181,10 +193,15 @@ export default function QMActiveScreen() {
     if (slideComplete) {
       return (
         <ScreenContainer>
+          <View style={styles.scrollWrapper}>
           <ScrollView
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            onScroll={qmScrollHandler}
+            scrollEventThrottle={16}
+            onContentSizeChange={qmContentSizeChange}
+            onLayout={qmLayout}
           >
             {/* Question card at top */}
             <View style={styles.questionTop}>
@@ -231,6 +248,8 @@ export default function QMActiveScreen() {
               </View>
             )}
           </ScrollView>
+          <ScrollFadeOverlay showTop={qmTopFade} showBottom={qmBottomFade} />
+          </View>
         </ScreenContainer>
       );
     }
@@ -291,6 +310,10 @@ const styles = StyleSheet.create({
   },
   animatingCard: {
     paddingHorizontal: Spacing.md,
+  },
+  scrollWrapper: {
+    flex: 1,
+    position: 'relative',
   },
   scroll: {
     flex: 1,
