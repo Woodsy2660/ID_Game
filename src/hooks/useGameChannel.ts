@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { RoundStartedPayload } from '../store/types'
+import { useGameStore } from '../store/gameStore'
 
 export interface AnswerSubmittedPayload {
   playerId: string
@@ -12,12 +13,19 @@ export interface ResultsReadyPayload {
   submissions: Record<string, number>  // complete authoritative map: playerId → guessedQuestionId
 }
 
+export interface QMReadyPayload {
+  answerPhaseStartedAt?: string
+}
+
 interface GameChannelHandlers {
   onAnswerSubmitted?: (payload: AnswerSubmittedPayload) => void
   onRoundStarted?: (payload: RoundStartedPayload) => void
-  onQMReady?: () => void
+  onQMReady?: (payload: QMReadyPayload) => void
   onResultsReady?: (payload: ResultsReadyPayload) => void
+  onRoundExpired?: () => void   // fired by expire-round edge function when timer runs out
   onLeaderboardReady?: () => void
+  onGameEnded?: () => void
+  onPlayerLeft?: (playerId: string) => void
 }
 
 interface GameChannelReturn {
@@ -57,14 +65,27 @@ export function useGameChannel(
       .on('broadcast', { event: 'round:started' }, (event) => {
         handlersRef.current.onRoundStarted?.(event.payload as RoundStartedPayload)
       })
-      .on('broadcast', { event: 'qm:ready' }, () => {
-        handlersRef.current.onQMReady?.()
+      .on('broadcast', { event: 'qm:ready' }, (event) => {
+        handlersRef.current.onQMReady?.(event.payload as QMReadyPayload)
       })
       .on('broadcast', { event: 'results:ready' }, (event) => {
         handlersRef.current.onResultsReady?.(event.payload as ResultsReadyPayload)
       })
+      .on('broadcast', { event: 'round:results' }, () => {
+        // Fired by expire-round when the answer timer runs out server-side
+        handlersRef.current.onRoundExpired?.()
+      })
       .on('broadcast', { event: 'leaderboard:ready' }, () => {
         handlersRef.current.onLeaderboardReady?.()
+      })
+      .on('broadcast', { event: 'game:ended' }, () => {
+        handlersRef.current.onGameEnded?.()
+      })
+      .on('broadcast', { event: 'player:left' }, (event) => {
+        const { player_id } = event.payload as { player_id: string }
+        // Remove from store so allAnswered() recalculates correctly
+        useGameStore.getState().removePlayer(player_id)
+        handlersRef.current.onPlayerLeft?.(player_id)
       })
       .subscribe()
 

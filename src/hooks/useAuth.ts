@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { setCachedToken } from '../lib/tokenCache'
 
 interface UseAuthReturn {
   session: Session | null
@@ -18,6 +19,7 @@ export function useAuth(): UseAuthReturn {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
+        setCachedToken(data.session.access_token)
         setSession(data.session)
         setLoading(false)
       } else {
@@ -25,6 +27,7 @@ export function useAuth(): UseAuthReturn {
           if (error) {
             setAuthError(error.message)
           } else {
+            setCachedToken(signInData.session?.access_token ?? null)
             setSession(signInData.session)
           }
           setLoading(false)
@@ -33,6 +36,7 @@ export function useAuth(): UseAuthReturn {
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setCachedToken(newSession?.access_token ?? null)
       setSession(newSession)
     })
 

@@ -5,6 +5,8 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
+  Alert,
+  Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
   LayoutChangeEvent,
@@ -25,9 +27,11 @@ import { supabase } from '../../src/lib/supabase';
  * Host taps "Next Round" → calls start-round edge function → broadcasts
  * round:started to all clients → everyone navigates to round-start.
  *
+ * Host can also tap "End Game" → calls end-game → broadcasts game:ended → everyone exits.
+ *
  * Non-hosts see "Waiting for host..." and navigate when the broadcast arrives.
  *
- * State machine: leaderboard → round_start (next round)
+ * State machine: leaderboard → round_start (next round) | / (game ended)
  */
 export default function LeaderboardScreen() {
   const router = useRouter();
@@ -49,6 +53,7 @@ export default function LeaderboardScreen() {
     (players.find((p) => p.id === localPlayerId)?.isHost ?? false);
 
   const [loading, setLoading] = useState(false);
+  const [endingGame, setEndingGame] = useState(false);
   const [showFade, setShowFade] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,6 +70,10 @@ export default function LeaderboardScreen() {
       }
       setNextRound(payload);
       router.replace('/(game)/round-start');
+    },
+    onGameEnded: () => {
+      usePlayerStore.getState().clearRoom();
+      router.replace('/');
     },
   });
 
@@ -109,13 +118,10 @@ export default function LeaderboardScreen() {
 
       if (error) {
         console.warn('[leaderboard] start-round error:', error);
-        // Don't fall back here — broadcast may still arrive.
-        // The 8s timeout will catch it if not.
       }
       // Success: navigation happens via onRoundStarted broadcast, which clears the timeout
     } catch (e) {
       console.warn('[leaderboard] start-round network error:', e);
-      // Network error — broadcast definitely won't arrive, fall back immediately
       if (fallbackTimerRef.current) {
         clearTimeout(fallbackTimerRef.current);
         fallbackTimerRef.current = null;
@@ -123,6 +129,41 @@ export default function LeaderboardScreen() {
       nextRound();
       router.replace('/(game)/round-start');
       setLoading(false);
+    }
+  };
+
+  const doEndGame = async () => {
+    setEndingGame(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await supabase.functions.invoke('end-game', {
+        body: { room_id },
+        headers: session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : undefined,
+      });
+    } catch (e) {
+      console.warn('[leaderboard] end-game error:', e);
+    }
+    setEndingGame(false);
+    // Navigation handled by onGameEnded broadcast
+  };
+
+  const handleEndGame = () => {
+    // Alert.alert async onPress is unreliable on React Native Web — use Platform branch
+    if (Platform.OS === 'web') {
+      if (window.confirm('End the game for everyone?')) {
+        doEndGame();
+      }
+    } else {
+      Alert.alert(
+        'End Game',
+        'Are you sure you want to end the game for everyone?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'End Game', style: 'destructive', onPress: doEndGame },
+        ]
+      );
     }
   };
 
@@ -279,19 +320,34 @@ export default function LeaderboardScreen() {
             </Text>
           )}
           {isHost ? (
-            <Pressable
-              onPress={handleNextRound}
-              disabled={loading}
-              style={({ pressed }) => [
-                styles.ctaButton,
-                pressed && !loading && styles.ctaPressed,
-                loading && styles.ctaDisabled,
-              ]}
-            >
-              <Text style={styles.ctaText}>
-                {loading ? 'STARTING...' : 'NEXT ROUND'}
-              </Text>
-            </Pressable>
+            <>
+              <Pressable
+                onPress={handleNextRound}
+                disabled={loading || endingGame}
+                style={({ pressed }) => [
+                  styles.ctaButton,
+                  pressed && !loading && !endingGame && styles.ctaPressed,
+                  (loading || endingGame) && styles.ctaDisabled,
+                ]}
+              >
+                <Text style={styles.ctaText}>
+                  {loading ? 'STARTING...' : 'NEXT ROUND'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleEndGame}
+                disabled={loading || endingGame}
+                style={({ pressed }) => [
+                  styles.endButton,
+                  pressed && !loading && !endingGame && styles.ctaPressed,
+                  (loading || endingGame) && styles.ctaDisabled,
+                ]}
+              >
+                <Text style={styles.endButtonText}>
+                  {endingGame ? 'ENDING...' : 'END GAME'}
+                </Text>
+              </Pressable>
+            </>
           ) : (
             <Text style={styles.waitingText}>
               Waiting for host to start next round...
@@ -381,7 +437,7 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     paddingTop: 16,
-    gap: 12,
+    gap: 10,
   },
   nextQMText: {
     fontSize: 16,
@@ -415,6 +471,22 @@ const styles = StyleSheet.create({
     color: '#121212',
     textTransform: 'uppercase',
     letterSpacing: 0.98,
+  },
+  endButton: {
+    width: '100%',
+    height: 44,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#555555',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555555',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   waitingText: {
     fontSize: 14,

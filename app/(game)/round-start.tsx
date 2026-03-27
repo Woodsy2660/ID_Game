@@ -50,14 +50,16 @@ export default function RoundStartScreen() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCount((prev) => {
-        const next = prev - 1;
-        if (next > 0) animateNumber();
-        return next;
-      });
+      setCount((prev) => prev - 1);
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Animate the number change — must be in a separate effect so shared-value
+  // writes happen outside the setState updater (avoids Reanimated strict-mode warning)
+  useEffect(() => {
+    if (count > 0) animateNumber();
+  }, [count]);
 
   useEffect(() => {
     if (count <= 0 && !navigatedRef.current) {

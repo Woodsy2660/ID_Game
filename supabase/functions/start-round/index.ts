@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  if (room.status !== 'active') {
+  if (room.status === 'closed' || room.status === 'lobby') {
     return new Response(JSON.stringify({ error: 'ROOM_NOT_ACTIVE' }), {
       status: 409,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -163,10 +163,11 @@ Deno.serve(async (req) => {
   const decoyIds = pickDecoys(questionId, usedIds, 9)
   const visibleQuestionIds = [questionId, ...decoyIds].sort(() => Math.random() - 0.5)
 
-  // Update room
+  // Update room — set status to qm_active so rejoiners during this phase land correctly
   await supabaseAdmin
     .from('rooms')
     .update({
+      status: 'qm_active',
       current_round: nextRoundNumber,
       current_qm_id: qmPlayerId,
       used_question_ids: [...usedIds, questionId],
@@ -181,6 +182,7 @@ Deno.serve(async (req) => {
       round_number: nextRoundNumber,
       qm_id: qmPlayerId,
       question_id: questionId,
+      visible_question_ids: visibleQuestionIds,
     })
     .select('id')
     .single()

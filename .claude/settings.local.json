@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npx create-expo-app@latest . --template blank-typescript)",
       "Bash(npm --version)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(head -5 src/components/CountdownTimer.tsx src/components/RejoinPrompt.tsx \"app/\\(game\\)/waiting.tsx\" \"supabase/functions/end-game/index.ts\")",
+      "Bash(npx tsc:*)",
+      "Bash(supabase functions:*)"
     ]
   }
 }
