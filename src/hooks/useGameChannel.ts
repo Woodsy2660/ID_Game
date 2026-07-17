@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { removeChannelByName } from '../lib/channelCleanup'
 import type { RoundStartedPayload } from '../store/types'
 import { useGameStore } from '../store/gameStore'
+import { usePlayerStore } from '../store/playerStore'
 
 export interface AnswerSubmittedPayload {
   playerId: string
@@ -18,12 +19,19 @@ export interface QMReadyPayload {
   answerPhaseStartedAt?: string
 }
 
+export interface HostChangedPayload {
+  new_host_id: string
+  new_host_name: string
+}
+
 interface GameChannelHandlers {
   onAnswerSubmitted?: (payload: AnswerSubmittedPayload) => void
   onRoundStarted?: (payload: RoundStartedPayload) => void
   onQMReady?: (payload: QMReadyPayload) => void
   onResultsReady?: (payload: ResultsReadyPayload) => void
   onRoundExpired?: () => void   // fired by expire-round edge function when timer runs out
+  onRoundForfeited?: () => void // fired when the QM forfeits or leaves mid-round
+  onHostChanged?: (payload: HostChangedPayload) => void
   onLeaderboardReady?: () => void
   onGameEnded?: () => void
   onPlayerLeft?: (playerId: string) => void
@@ -81,6 +89,19 @@ export function useGameChannel(
       .on('broadcast', { event: 'round:results' }, () => {
         // Fired by expire-round when the answer timer runs out server-side
         handlersRef.current.onRoundExpired?.()
+      })
+      .on('broadcast', { event: 'round:forfeited' }, () => {
+        // QM forfeited their turn, or left mid-round — skip to leaderboard
+        handlersRef.current.onRoundForfeited?.()
+      })
+      .on('broadcast', { event: 'host:changed' }, (event) => {
+        const p = event.payload as HostChangedPayload
+        // Keep local host flag in sync so the new host sees host controls
+        const { player_id } = usePlayerStore.getState()
+        if (player_id === p.new_host_id) {
+          usePlayerStore.getState().setHost(true)
+        }
+        handlersRef.current.onHostChanged?.(p)
       })
       .on('broadcast', { event: 'leaderboard:ready' }, () => {
         handlersRef.current.onLeaderboardReady?.()

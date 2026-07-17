@@ -1,23 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { SlotMachine } from '../../src/components/game/SlotMachine';
 import { IDCard } from '../../src/components/game/IDCard';
 import { SubmissionTracker } from '../../src/components/game/SubmissionTracker';
-import { CountdownTimer } from '../../src/components/CountdownTimer';
+import { CountdownTimer } from '../../src/components/game/CountdownTimer';
+import { LeaveGameButton } from '../../src/components/game/LeaveGameButton';
+import { ForfeitTurnButton } from '../../src/components/game/ForfeitTurnButton';
+import { SpinningIDCard } from '../../src/components/game/SpinningIDCard';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
-import { usePlayerStore } from '../../src/stores/playerStore';
+import { usePlayerStore } from '../../src/store/playerStore';
 import type { ResultsReadyPayload } from '../../src/hooks/useGameChannel';
 import { supabase } from '../../src/lib/supabase';
 import { removeAllChannels } from '../../src/lib/channelCleanup';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay';
 import { useScrollFades } from '../../src/hooks/useScrollFades';
-import questionBank from '../../src/data/questionBank.json';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { findQuestion } from '../../src/data/packs';
 
 /**
  * QM Active screen:
@@ -36,7 +38,6 @@ export default function QMActiveScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
   const roundId = useGameStore((s) => s.roundId);
   const questionId = useGameStore((s) => s.questionId);
-  const visibleQuestionIds = useGameStore((s) => s.visibleQuestionIds);
   const qmPlayer = useGameStore((s) => s.getQMPlayer());
   const advancePhase = useGameStore((s) => s.advancePhase);
   const setAnswerPhaseStartedAt = useGameStore((s) => s.setAnswerPhaseStartedAt);
@@ -47,14 +48,14 @@ export default function QMActiveScreen() {
   const players = useGameStore((s) => s.players);
   const submissions = useGameStore((s) => s.submissions);
   const qmPlayerId = useGameStore((s) => s.qmPlayerId);
+  const pack = useGameStore((s) => s.pack);
   const { room_id } = usePlayerStore();
 
   // When rejoining during answer_phase, skip the slot machine animation entirely
   const [revealed, setRevealed] = useState(isRejoinAnswerPhase);
   const [showTracker, setShowTracker] = useState(isRejoinAnswerPhase);
-  const [slideComplete, setSlideComplete] = useState(isRejoinAnswerPhase);
 
-  const question = questionBank.find((q) => q.id === questionId);
+  const question = findQuestion(pack, questionId ?? -1);
   const answerers = players.filter((p) => p.id !== qmPlayerId);
   const submittedCount = Object.keys(submissions).length;
 
@@ -66,10 +67,7 @@ export default function QMActiveScreen() {
     onLayout: qmLayout,
   } = useScrollFades();
 
-  // Animation: slide the question card from center to top
-  const slideAnim = useRef(new Animated.Value(0)).current; // 0 = center, 1 = top
-
-  // Timer ref so we can clean up the 5 s auto-broadcast on unmount
+  // Timer ref so we can clean up the auto-broadcast on unmount
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guard against navigating to round-results more than once
   const transitionedRef = useRef(false);
@@ -78,8 +76,6 @@ export default function QMActiveScreen() {
   useEffect(() => {
     setRevealed(false);
     setShowTracker(false);
-    setSlideComplete(false);
-    slideAnim.setValue(0);
     transitionedRef.current = false;
   }, [roundId]);
 
@@ -138,19 +134,20 @@ export default function QMActiveScreen() {
     } : undefined,
     // Timer expired server-side — navigate everyone to results
     onRoundExpired: () => navigateToResults(),
+    // QM left mid-round (answerer's device receives this) — skip to leaderboard
+    onRoundForfeited: () => {
+      if (transitionedRef.current) return;
+      transitionedRef.current = true;
+      useGameStore.getState().forfeitRound();
+      router.replace('/(game)/leaderboard');
+    },
   });
 
   const handleRevealed = () => {
+    // Swap from the centered slot machine to the working layout (question pinned
+    // at the top, ranking + tracker below). The question card fades into its
+    // final position — one container, one width, so there's no reflow jank.
     setRevealed(true);
-
-    // Animate the question card from center to top
-    Animated.timing(slideAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
-      setSlideComplete(true);
-    });
 
     if (isQM()) {
       const isDevMode = roomCode?.startsWith('DEV');
@@ -174,26 +171,30 @@ export default function QMActiveScreen() {
 
   // ─── QM view ──────────────────────────────────────────────────────────────
   if (isQM()) {
-    // The question card's translateY: from vertically centered to top
-    // Center offset ≈ (screenHeight / 2) - cardHeight/2 - topPadding
-    // We animate from 0 (natural position in centered container) to a negative value
-    const slideUpDistance = SCREEN_HEIGHT * 0.28;
-    const translateY = slideAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, -slideUpDistance],
-    });
+    const leaveOverlay = (
+      <LeaveGameButton note="You're the Question Master — leaving forfeits this turn and passes host if you're the host." />
+    );
 
-    // Fade out the SlotMachine spinner elements, fade in question card content
-    const spinnerOpacity = slideAnim.interpolate({
-      inputRange: [0, 0.3],
-      outputRange: [1, 0],
-    });
-
-    // Once the slide is complete, swap to the ScrollView layout
-    if (slideComplete) {
+    // Pre-reveal: centered slot machine.
+    if (!revealed) {
       return (
-        <ScreenContainer>
-          <View style={styles.scrollWrapper}>
+        <ScreenContainer overlay={leaveOverlay}>
+          <View style={styles.container}>
+            <SlotMachine
+              questionId={questionId!}
+              pack={pack}
+              onRevealed={handleRevealed}
+            />
+          </View>
+        </ScreenContainer>
+      );
+    }
+
+    // Post-reveal: one stable layout. Question card pinned at the top (fading
+    // into place), ranking guide + tracker below. No width/position reflow.
+    return (
+      <ScreenContainer overlay={leaveOverlay}>
+        <View style={styles.scrollWrapper}>
           <ScrollView
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
@@ -203,17 +204,15 @@ export default function QMActiveScreen() {
             onContentSizeChange={qmContentSizeChange}
             onLayout={qmLayout}
           >
-            {/* Question card at top */}
-            <View style={styles.questionTop}>
+            <Animated.View entering={FadeInDown.duration(420)} style={styles.questionTop}>
               <View style={styles.questionCard}>
                 <Text style={styles.questionLabel}>YOUR SECRET QUESTION</Text>
                 <Text style={styles.questionText}>{question?.text ?? ''}</Text>
               </View>
-            </View>
+            </Animated.View>
 
-            {/* Arrange IDs */}
             {showTracker && (
-              <Animated.View style={[styles.arrangeContainer, { opacity: 1 }]}>
+              <Animated.View entering={FadeIn.duration(300)} style={styles.arrangeContainer}>
                 <Text style={styles.arrangeTitle}>ARRANGE IDs</Text>
                 <View style={styles.cardList}>
                   <Text style={styles.rankLabel}>MOST LIKELY</Text>
@@ -225,7 +224,6 @@ export default function QMActiveScreen() {
               </Animated.View>
             )}
 
-            {/* Submission tracker + countdown */}
             {showTracker && (
               <View style={styles.trackerArea}>
                 {answerPhaseStartedAt && (
@@ -246,34 +244,11 @@ export default function QMActiveScreen() {
                   players={answerers}
                   submittedPlayerIds={new Set(Object.keys(submissions))}
                 />
+                <ForfeitTurnButton />
               </View>
             )}
           </ScrollView>
           <ScrollFadeOverlay showTop={qmTopFade} showBottom={qmBottomFade} />
-          </View>
-        </ScreenContainer>
-      );
-    }
-
-    // Pre-reveal + animating: centered layout with SlotMachine and animated question card
-    return (
-      <ScreenContainer>
-        <View style={styles.container}>
-          {!revealed ? (
-            <SlotMachine
-              questionId={questionId!}
-              visibleQuestionIds={visibleQuestionIds}
-              onRevealed={handleRevealed}
-            />
-          ) : (
-            // Post-reveal animating: question card slides from center to top
-            <Animated.View style={[styles.animatingCard, { transform: [{ translateY }] }]}>
-              <View style={styles.questionCard}>
-                <Text style={styles.questionLabel}>YOUR SECRET QUESTION</Text>
-                <Text style={styles.questionText}>{question?.text ?? ''}</Text>
-              </View>
-            </Animated.View>
-          )}
         </View>
       </ScreenContainer>
     );
@@ -291,9 +266,9 @@ export default function QMActiveScreen() {
 
   // ─── Answerer waiting view — navigation happens via onQMReady broadcast ───
   return (
-    <ScreenContainer centered>
+    <ScreenContainer centered overlay={<LeaveGameButton />}>
       <View style={styles.waitContainer}>
-        <View style={styles.waitDot} />
+        <SpinningIDCard />
         <Text style={styles.waitTitle}>
           {qmPlayer?.displayName ?? 'The QM'} is reading their question...
         </Text>
@@ -308,9 +283,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.xl,
     justifyContent: 'center',
-  },
-  animatingCard: {
-    paddingHorizontal: Spacing.md,
   },
   scrollWrapper: {
     flex: 1,
@@ -327,12 +299,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   questionCard: {
-    backgroundColor: Colors.raised,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: 16,
+    backgroundColor: Colors.navy,
+    borderRadius: 18,
     padding: Spacing['2xl'],
     gap: Spacing.sm,
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.navyEdge,
   },
   questionLabel: {
     ...Typography.label,
@@ -341,7 +313,7 @@ const styles = StyleSheet.create({
   },
   questionText: {
     ...Typography.display,
-    color: Colors.white,
+    color: Colors.onNavy,
   },
   arrangeContainer: {
     alignItems: 'center',
@@ -349,7 +321,7 @@ const styles = StyleSheet.create({
   },
   arrangeTitle: {
     ...Typography.display,
-    color: Colors.white,
+    color: Colors.ink,
     textAlign: 'center',
     marginBottom: Spacing.md,
   },
@@ -360,8 +332,7 @@ const styles = StyleSheet.create({
   },
   rankLabel: {
     ...Typography.label,
-    color: Colors.primary,
-    opacity: 0.6,
+    color: Colors.inkSoft,
     textAlign: 'center',
     marginTop: Spacing.xs,
     marginBottom: Spacing.xs,
@@ -373,18 +344,11 @@ const styles = StyleSheet.create({
   },
   waitContainer: {
     alignItems: 'center',
-    gap: Spacing.lg,
-  },
-  waitDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.primary,
-    marginBottom: Spacing.sm,
+    gap: Spacing.xl,
   },
   waitTitle: {
     ...Typography.heading,
-    color: Colors.white,
+    color: Colors.ink,
     textAlign: 'center',
   },
   waitHint: {

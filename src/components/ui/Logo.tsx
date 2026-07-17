@@ -62,6 +62,6 @@ const styles = StyleSheet.create({
   },
   textGold: {
     fontWeight: '900',
-    color: Colors.primary,
+    color: Colors.ink,
   },
 });

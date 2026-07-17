@@ -10,7 +10,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { QMAnnouncement } from '../../src/components/game/QMAnnouncement';
+import { LeaveGameButton } from '../../src/components/game/LeaveGameButton';
 import { useGameStore } from '../../src/store/gameStore';
+import { useGameChannel } from '../../src/hooks/useGameChannel';
+import { usePlayerStore } from '../../src/store/playerStore';
+import { removeAllChannels } from '../../src/lib/channelCleanup';
 import { Colors, Spacing, Typography } from '../../src/theme';
 
 /**
@@ -25,9 +29,27 @@ export default function RoundStartScreen() {
   const isQM = useGameStore((s) => s.isQM);
   const qmPlayer = useGameStore((s) => s.getQMPlayer());
   const advancePhase = useGameStore((s) => s.advancePhase);
+  const roomCode = useGameStore((s) => s.roomCode);
 
   const [count, setCount] = useState(3);
   const navigatedRef = useRef(false);
+
+  // Subscribe for QM-left / game-ended during the brief countdown so nobody is
+  // stranded advancing to a round whose QM already forfeited.
+  useGameChannel(roomCode ?? '', {
+    onRoundForfeited: () => {
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
+      useGameStore.getState().forfeitRound();
+      router.replace('/(game)/leaderboard');
+    },
+    onGameEnded: () => {
+      navigatedRef.current = true;
+      removeAllChannels();
+      usePlayerStore.getState().clearRoom();
+      router.replace('/');
+    },
+  });
 
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
@@ -70,7 +92,7 @@ export default function RoundStartScreen() {
   }, [count]);
 
   return (
-    <ScreenContainer centered>
+    <ScreenContainer centered overlay={<LeaveGameButton note={isQM() ? "You're the Question Master — leaving forfeits this turn." : undefined} />}>
       <QMAnnouncement
         playerName={qmPlayer?.displayName ?? '???'}
         roundNumber={currentRound + 1}
@@ -102,7 +124,7 @@ const styles = StyleSheet.create({
   countdownNumber: {
     fontSize: 48,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.ink,
     lineHeight: 56,
   },
 });

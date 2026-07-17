@@ -23,28 +23,28 @@ import { OnboardingVisualHaveFun } from './visuals/OnboardingVisualHaveFun';
 import type { OnboardingControls } from '../../hooks/useOnboarding';
 
 const SKIP_ROW_HEIGHT = 48;
-const BOTTOM_BAR_HEIGHT = 120;
+const BOTTOM_BAR_HEIGHT = 140;
 
 const SLIDE_DATA = [
   {
-    title: 'Place your IDs on the table',
-    body: 'This is a physical game. Gather around and place your IDs in the centre of the group.',
+    title: 'Put your IDs on the table',
+    body: 'The ID Game is played in person. Everyone drops a real ID card into the middle of the group \u2014 your phone is just the companion.',
   },
   {
-    title: 'One player sees a secret question',
-    body: 'They are now the Question Master.',
+    title: 'One player gets a secret question',
+    body: 'Each round, one player becomes the Question Master and secretly sees a \u201CMost likely to\u2026\u201D question that no one else can read.',
   },
   {
-    title: 'Rank the group',
-    body: 'Based on the secret question, the Question Master orders players from most to least likely using the IDs.',
+    title: 'They rank everyone\u2019s IDs',
+    body: 'Without saying the question out loud, the Question Master lines up the IDs from most to least likely.',
   },
   {
-    title: 'Other players guess the question',
-    body: 'Score a point if you get it right, no points for getting it wrong.',
+    title: 'Everyone else guesses the question',
+    body: 'Study the ranking, then pick which question you think it was from the options on your phone. Guess right to score a point.',
   },
   {
-    title: 'Have fun playing!',
-    body: 'Let\u2019s see who knows who best \uD83D\uDE43',
+    title: 'Then it\u2019s someone else\u2019s turn',
+    body: 'The Question Master role passes around the group each round. Whoever reads the room best wins. \uD83E\uDEAA',
     centerText: true,
   },
 ];
@@ -127,9 +127,13 @@ export function OnboardingModal({ isOpen, step, totalSteps, close, next, complet
                 horizontal
                 pagingEnabled
                 bounces={false}
-                scrollEnabled={false}
+                scrollEnabled
                 showsHorizontalScrollIndicator={false}
                 scrollEventThrottle={16}
+                onMomentumScrollEnd={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+                  if (idx !== step) goTo(idx);
+                }}
               >
                 {SLIDE_DATA.map((slide, i) => (
                   <OnboardingSlide
@@ -149,10 +153,22 @@ export function OnboardingModal({ isOpen, step, totalSteps, close, next, complet
           {/* Bottom bar */}
           <View style={[styles.bottomBar, { height: BOTTOM_BAR_HEIGHT }]}>
             <ProgressDots total={totalSteps} current={step} />
-            <Button
-              title={step === totalSteps - 1 ? 'Start Game' : 'Next'}
-              onPress={step === totalSteps - 1 ? complete : next}
-            />
+            <View style={styles.navRow}>
+              <TouchableOpacity
+                onPress={() => goTo(step - 1)}
+                disabled={step === 0}
+                style={[styles.backButton, step === 0 && styles.backHidden]}
+                hitSlop={8}
+              >
+                <Text style={styles.backText}>Back</Text>
+              </TouchableOpacity>
+              <View style={styles.nextWrap}>
+                <Button
+                  title={step === totalSteps - 1 ? 'Start Game' : 'Next'}
+                  onPress={step === totalSteps - 1 ? complete : next}
+                />
+              </View>
+            </View>
           </View>
         </SafeAreaView>
       </View>
@@ -163,7 +179,7 @@ export function OnboardingModal({ isOpen, step, totalSteps, close, next, complet
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.bg,
   },
   safe: {
     flex: 1,
@@ -176,17 +192,19 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.raised,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.bgAlt,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeIcon: {
     fontSize: 14,
-    color: Colors.muted,
-    fontWeight: '600',
+    color: Colors.inkSoft,
+    fontWeight: '700',
   },
   slideArea: {
     flex: 1,
@@ -195,7 +213,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing['2xl'],
     paddingBottom: Spacing.lg,
     paddingTop: Spacing.lg,
-    gap: Spacing.lg,
+    gap: Spacing.md,
     justifyContent: 'flex-end',
+  },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  backButton: {
+    minHeight: 44,
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backHidden: {
+    opacity: 0,
+  },
+  backText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.inkSoft,
+  },
+  nextWrap: {
+    flex: 1,
   },
 });

@@ -1,20 +1,25 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   Modal,
   FlatList,
   Pressable,
-  Animated,
-  PanResponder,
   StyleSheet,
   Dimensions,
-  StatusBar,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Colors, Spacing, Typography } from '../../theme';
 import { ScrollFadeOverlay } from '../ui/ScrollFadeOverlay';
 import { useScrollFades } from '../../hooks/useScrollFades';
-import questionBank from '../../data/questionBank.json';
+import { getQuestions, isMaturePack, PACK_META } from '../../data/packs';
+import { usePlayerStore } from '../../store/playerStore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.88;
@@ -25,86 +30,65 @@ interface Props {
   onClose: () => void;
 }
 
-const SHEET_BG = '#1C1C1E';
+const SHEET_BG = '#FFFFFF';
 
 export function QuestionsPreviewModal({ visible, onClose }: Props) {
   const { showTopFade, showBottomFade, scrollHandler, onContentSizeChange, onLayout: fadeLayout } =
     useScrollFades();
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
-  const open = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(overlayOpacity, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [overlayOpacity, sheetTranslateY]);
+  const pack = usePlayerStore((s) => s.pack);
+  const adultConfirmed = usePlayerStore((s) => s.adult_confirmed);
+  // Preview only ever shows the selected pack. Mature questions stay hidden
+  // until this player has completed the 18+ confirmation.
+  const locked = isMaturePack(pack) && !adultConfirmed;
+  const questions = locked ? [] : getQuestions(pack);
+  const packName = pack ? PACK_META[pack].name : 'Questions';
+
+  const overlayOpacity = useSharedValue(0);
+  const sheetTranslateY = useSharedValue(SHEET_HEIGHT);
 
   const close = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: SHEET_HEIGHT,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => onClose());
-  }, [overlayOpacity, sheetTranslateY, onClose]);
+    overlayOpacity.value = withTiming(0, { duration: 250 });
+    sheetTranslateY.value = withTiming(SHEET_HEIGHT, { duration: 300 }, (finished) => {
+      if (finished) runOnJS(onClose)();
+    });
+  }, [onClose, overlayOpacity, sheetTranslateY]);
 
   useEffect(() => {
     if (visible) {
-      // Reset position before animating in
-      sheetTranslateY.setValue(SHEET_HEIGHT);
-      overlayOpacity.setValue(0);
-      open();
+      // Reset, then animate the sheet up and the scrim in.
+      sheetTranslateY.value = SHEET_HEIGHT;
+      overlayOpacity.value = 0;
+      sheetTranslateY.value = withTiming(0, { duration: 300 });
+      overlayOpacity.value = withTiming(1, { duration: 250 });
     }
-  }, [visible, open, sheetTranslateY, overlayOpacity]);
+  }, [visible, sheetTranslateY, overlayOpacity]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only capture vertical downward drags
-        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          sheetTranslateY.setValue(gestureState.dy);
-          overlayOpacity.setValue(1 - gestureState.dy / SHEET_HEIGHT);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > DISMISS_THRESHOLD || gestureState.vy > 0.5) {
-          close();
-        } else {
-          Animated.parallel([
-            Animated.timing(sheetTranslateY, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(overlayOpacity, {
-              toValue: 1,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start();
-        }
-      },
+  // Drag the handle down to dismiss. Attached to the handle only, so the
+  // question list scrolls independently (no scroll-vs-drag conflict).
+  const dragHandle = Gesture.Pan()
+    .onUpdate((e) => {
+      'worklet';
+      if (e.translationY > 0) {
+        sheetTranslateY.value = e.translationY;
+        overlayOpacity.value = 1 - e.translationY / SHEET_HEIGHT;
+      }
     })
-  ).current;
+    .onEnd((e) => {
+      'worklet';
+      if (e.translationY > DISMISS_THRESHOLD || e.velocityY > 500) {
+        overlayOpacity.value = withTiming(0, { duration: 250 });
+        sheetTranslateY.value = withTiming(SHEET_HEIGHT, { duration: 250 }, (finished) => {
+          if (finished) runOnJS(onClose)();
+        });
+      } else {
+        sheetTranslateY.value = withTiming(0, { duration: 200 });
+        overlayOpacity.value = withTiming(1, { duration: 200 });
+      }
+    });
+
+  const overlayStyle = useAnimatedStyle(() => ({ opacity: overlayOpacity.value }));
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: sheetTranslateY.value }] }));
 
   const renderItem = useCallback(
     ({ item, index }: { item: { id: number; text: string }; index: number }) => (
@@ -133,31 +117,25 @@ export function QuestionsPreviewModal({ visible, onClose }: Props) {
     >
       <View style={styles.container}>
         {/* Overlay */}
-        <Animated.View
-          style={[styles.overlay, { opacity: overlayOpacity }]}
-        >
+        <Animated.View style={[styles.overlay, overlayStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         </Animated.View>
 
         {/* Sheet */}
-        <Animated.View
-          style={[
-            styles.sheet,
-            { transform: [{ translateY: sheetTranslateY }] },
-          ]}
-          {...panResponder.panHandlers}
-        >
-          {/* Drag handle */}
-          <View style={styles.handleArea}>
-            <View style={styles.handle} />
-          </View>
+        <Animated.View style={[styles.sheet, sheetStyle]}>
+          {/* Drag handle — drag down to dismiss */}
+          <GestureDetector gesture={dragHandle}>
+            <View style={styles.handleArea}>
+              <View style={styles.handle} />
+            </View>
+          </GestureDetector>
 
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Classic Game Mode</Text>
+              <Text style={styles.headerTitle}>{packName}</Text>
               <Text style={styles.headerSubtitle}>
-                {questionBank.length} questions
+                {locked ? 'Confirm 18+ to preview' : `${questions.length} questions`}
               </Text>
             </View>
             <Pressable
@@ -171,20 +149,36 @@ export function QuestionsPreviewModal({ visible, onClose }: Props) {
 
           {/* Question list */}
           <View style={styles.listWrapper}>
-            <FlatList
-              data={questionBank}
-              renderItem={renderItem}
-              keyExtractor={keyExtractor}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              initialNumToRender={20}
-              maxToRenderPerBatch={30}
-              onScroll={scrollHandler}
-              scrollEventThrottle={16}
-              onContentSizeChange={onContentSizeChange}
-              onLayout={fadeLayout}
-            />
-            <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} bg={SHEET_BG} />
+            {locked ? (
+              <View style={styles.lockedArea}>
+                <Text style={styles.lockedText}>
+                  This pack contains 18+ content. Confirm you are 18 or older to preview the questions.
+                </Text>
+              </View>
+            ) : questions.length === 0 ? (
+              <View style={styles.lockedArea}>
+                <Text style={styles.lockedText}>
+                  Questions for this room will appear here once the pack loads.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <FlatList
+                  data={questions}
+                  renderItem={renderItem}
+                  keyExtractor={keyExtractor}
+                  contentContainerStyle={styles.listContent}
+                  showsVerticalScrollIndicator={false}
+                  initialNumToRender={20}
+                  maxToRenderPerBatch={30}
+                  onScroll={scrollHandler}
+                  scrollEventThrottle={16}
+                  onContentSizeChange={onContentSizeChange}
+                  onLayout={fadeLayout}
+                />
+                <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} bg={SHEET_BG} />
+              </>
+            )}
           </View>
         </Animated.View>
       </View>
@@ -203,7 +197,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     height: SHEET_HEIGHT,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
@@ -214,11 +208,10 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xs,
   },
   handle: {
-    width: 36,
+    width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.muted,
-    opacity: 0.5,
+    backgroundColor: Colors.borderStrong,
   },
   header: {
     flexDirection: 'row',
@@ -242,18 +235,29 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     ...Typography.helper,
   },
+  lockedArea: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing['2xl'],
+  },
+  lockedText: {
+    ...Typography.body,
+    color: Colors.muted,
+    textAlign: 'center',
+  },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.raised,
+    backgroundColor: Colors.bgAlt,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: Spacing.md,
   },
   closeIcon: {
     fontSize: 14,
-    color: Colors.muted,
+    color: Colors.inkSoft,
     fontWeight: '600',
   },
   listWrapper: {
@@ -275,8 +279,8 @@ const styles = StyleSheet.create({
   rowNumber: {
     width: 32,
     fontSize: 13,
-    fontWeight: '500',
-    color: Colors.muted,
+    fontWeight: '700',
+    color: Colors.primaryEdge,
     fontVariant: ['tabular-nums'],
     marginTop: 1,
   },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Spacing, Radius } from '../../theme';
+import { Colors, Spacing, Radius } from '../../theme';
 
 interface Props {
   delay?: number;
@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardWrapper: {
-    width: 158,
-    height: 100,
+    width: 118,
+    height: 74,
   },
   shadowLayer: {
     position: 'absolute',
@@ -65,17 +65,17 @@ const styles = StyleSheet.create({
     left: 6,
     width: '100%',
     height: '100%',
-    backgroundColor: '#1E2B6D',
+    backgroundColor: Colors.navyEdge,
     borderRadius: Radius.lg,
   },
   card: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#FFD738',
+    backgroundColor: Colors.primary,
     borderRadius: Radius.lg,
     padding: Spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: 'rgba(19,35,96,0.12)',
   },
   content: {
     flex: 1,
@@ -83,32 +83,32 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   leftSection: {
-    width: 44,
+    width: 34,
     justifyContent: 'center',
   },
   photoBox: {
-    width: 44,
-    height: 50,
-    backgroundColor: '#2D323E',
+    width: 34,
+    height: 40,
+    backgroundColor: 'rgba(19,35,96,0.16)',
     borderRadius: Radius.sm,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
   photoBody: {
-    width: 24,
-    height: 18,
-    backgroundColor: '#3F4451',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    width: 19,
+    height: 14,
+    backgroundColor: 'rgba(19,35,96,0.4)',
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
   },
   photoHead: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#3F4451',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(19,35,96,0.4)',
     position: 'absolute',
-    top: 10,
+    top: 8,
   },
   rightSection: {
     flex: 1,
@@ -116,9 +116,9 @@ const styles = StyleSheet.create({
   },
   textLine: {
     height: 3,
-    backgroundColor: '#BA9600',
+    backgroundColor: Colors.navyEdge,
     borderRadius: 2,
-    opacity: 0.2,
+    opacity: 0.22,
   },
   tagContainer: {
     flexDirection: 'row',
@@ -127,10 +127,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   tag: {
-    width: 34,
-    height: 10,
-    backgroundColor: '#BA9600',
-    borderRadius: 5,
-    opacity: 0.2,
+    width: 26,
+    height: 8,
+    backgroundColor: Colors.navyEdge,
+    borderRadius: 4,
+    opacity: 0.22,
   },
 });

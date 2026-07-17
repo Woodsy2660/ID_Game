@@ -6,15 +6,16 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Colors, Spacing, Typography, Radius } from '../../theme';
-import type { RoundAnswer, Player } from '../../store/types';
-import questionBank from '../../data/questionBank.json';
+import { Colors, Spacing, Typography, Radius, Shadow } from '../../theme';
+import type { RoundAnswer, Player, PackId } from '../../store/types';
+import { findQuestion } from '../../data/packs';
 
 interface Props {
   questionId: number;
   qmName: string;
   answers: RoundAnswer[];
   players: Player[];
+  pack: PackId | null;
 }
 
 /**
@@ -22,7 +23,7 @@ interface Props {
  * - The correct question revealed
  * - Each player's guess result (correct/wrong)
  */
-export function ResultSplash({ questionId, qmName, answers, players }: Props) {
+export function ResultSplash({ questionId, qmName, answers, players, pack }: Props) {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(16);
 
@@ -36,7 +37,7 @@ export function ResultSplash({ questionId, qmName, answers, players }: Props) {
     transform: [{ translateY: translateY.value }],
   }));
 
-  const question = questionBank.find((q) => q.id === questionId);
+  const question = findQuestion(pack, questionId);
   const correctCount = answers.filter((a) => a.isCorrect).length;
 
   return (
@@ -54,7 +55,7 @@ export function ResultSplash({ questionId, qmName, answers, players }: Props) {
       <View style={styles.resultList}>
         {answers.map((answer) => {
           const player = players.find((p) => p.id === answer.playerId);
-          const guessedQ = questionBank.find((q) => q.id === answer.guessedQuestionId);
+          const guessedQ = findQuestion(pack, answer.guessedQuestionId);
 
           return (
             <View
@@ -88,12 +89,12 @@ const styles = StyleSheet.create({
     gap: Spacing.xl,
   },
   revealCard: {
-    backgroundColor: Colors.raised,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: Radius.lg,
+    backgroundColor: Colors.navy,
+    borderRadius: Radius.xl,
     padding: Spacing['2xl'],
     gap: Spacing.sm,
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.navyEdge,
   },
   label: {
     ...Typography.label,
@@ -101,16 +102,16 @@ const styles = StyleSheet.create({
   },
   questionText: {
     ...Typography.heading,
-    color: Colors.white,
+    color: Colors.onNavy,
   },
   qmHint: {
     ...Typography.body,
-    color: Colors.muted,
+    color: 'rgba(245,247,255,0.7)',
     marginTop: Spacing.xs,
   },
   summaryText: {
     ...Typography.body,
-    color: Colors.muted,
+    color: Colors.inkSoft,
     textAlign: 'center',
   },
   resultList: {
@@ -121,10 +122,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderRadius: Radius.sm,
+    borderWidth: 1.5,
+    borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
+    ...Shadow.soft,
   },
   resultCorrect: {
     borderColor: Colors.success,
@@ -138,8 +140,8 @@ const styles = StyleSheet.create({
   },
   playerName: {
     ...Typography.body,
-    color: Colors.white,
-    fontWeight: '600',
+    color: Colors.ink,
+    fontWeight: '700',
   },
   guessText: {
     ...Typography.helper,

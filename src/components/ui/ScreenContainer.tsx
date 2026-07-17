@@ -25,7 +25,7 @@ export function ScreenContainer({ children, centered, style, overlay }: Props) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.bg,
   },
   container: {
     flex: 1,

@@ -1,220 +1,176 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, AccessibilityInfo } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSequence,
-  withDelay,
+  withSpring,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
-import { Colors, Spacing, Typography, Radius } from '../../theme';
-import questionBank from '../../data/questionBank.json';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Colors, Spacing, Typography, Radius, Mono } from '../../theme';
+import { getQuestions, findQuestion } from '../../data/packs';
+import type { PackId } from '../../store/types';
 
 interface Props {
   /** The correct question ID to land on */
   questionId: number;
-  /** The 10 visible answer option IDs (what answerers will choose from) */
-  visibleQuestionIds: number[];
+  /** The room's pack — questions are resolved against it */
+  pack: PackId | null;
   /** Called when the reveal animation completes (question is visible) */
   onRevealed?: () => void;
-  /** When true, collapses spinner and pins question card to top */
-  compact?: boolean;
 }
 
-const TOTAL_QUESTIONS = questionBank.length; // 186
+// Reel geometry
+const CELL_H = 92;
+const WINDOW_H = 132;
+const CENTER_OFFSET = (WINDOW_H - CELL_H) / 2; // top offset of the centered cell
+const STRIP_LEN = 34;
+const LAND_INDEX = 30; // where the correct number sits in the strip
+const START_INDEX = 3;
+const FINAL_Y = CENTER_OFFSET - LAND_INDEX * CELL_H;
+const START_Y = CENTER_OFFSET - START_INDEX * CELL_H;
 
 /**
- * 4-phase animated spinner:
- *   Phase 1: "Shhh" overlay (2s) → fade out (400ms)
- *   Phase 2: Number spinner — rapid cycling, decelerating over ~2.5s
- *   Phase 3: Land on number, hold 600ms, fade in question text
- *   Phase 4: After 2.5s hold, calls onRevealed (parent handles slide-to-top)
+ * 3-phase reveal:
+ *   Phase 1: "Shhh" privacy overlay (~1.8s) → fade out
+ *   Phase 2: A real number reel — one tall strip driven by a single translateY
+ *            shared value on the UI thread, decelerating then springing to land
+ *   Phase 3: Land (gold window flash) → the secret question fades in → after a
+ *            2.5s read hold, onRevealed() fires (parent slides it to the top)
  */
-export function SlotMachine({ questionId, visibleQuestionIds, onRevealed, compact = false }: Props) {
+export function SlotMachine({ questionId, pack, onRevealed }: Props) {
   const [phase, setPhase] = useState<'shhh' | 'spinning' | 'landed' | 'revealed'>('shhh');
-  const [displayNumber, setDisplayNumber] = useState<number | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
-  const realQuestion = questionBank.find((q) => q.id === questionId);
-  // Land on the actual question ID (1–186), not the position within the 10 visible options
+  const realQuestion = findQuestion(pack, questionId);
   const finalNumber = questionId;
+  const bankIds = useMemo(() => getQuestions(pack).map((q) => q.id), [pack]);
 
-  // Animation values
+  // The reel strip: random pack numbers, with the real one at the landing index.
+  const strip = useMemo(() => {
+    const rnd = () =>
+      bankIds.length > 0
+        ? bankIds[Math.floor(Math.random() * bankIds.length)]
+        : Math.floor(Math.random() * 186) + 1;
+    return Array.from({ length: STRIP_LEN }, (_, i) => (i === LAND_INDEX ? finalNumber : rnd()));
+  }, [finalNumber, bankIds]);
+
   const shhhOpacity = useSharedValue(0);
-  const spinnerOpacity = useSharedValue(0);
-  const numberScale = useSharedValue(1);
+  const reelY = useSharedValue(START_Y);
+  const flashOpacity = useSharedValue(0);
   const questionOpacity = useSharedValue(0);
-  const bracketOpacity = useSharedValue(0.3);
-  const numberOpacityVal = useSharedValue(1);
-  const compactProgress = useSharedValue(0); // 0 = full spinner, 1 = compact (question pinned top)
 
-  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const track = (t: ReturnType<typeof setTimeout>) => {
+    timersRef.current.push(t);
+    return t;
+  };
 
-  // Animate to compact mode — single smooth transition
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
+
+  // Reduce motion → skip straight to the revealed state.
   useEffect(() => {
-    if (compact) {
-      compactProgress.value = withTiming(1, { duration: 500, easing: Easing.inOut(Easing.cubic) });
-      numberOpacityVal.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
-      bracketOpacity.value = withTiming(0, { duration: 250 });
-    }
-  }, [compact]);
-
-  // Check reduced motion preference
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled?.().then((enabled) => {
-      if (enabled) {
+    AccessibilityInfo.isReduceMotionEnabled?.()
+      .then((enabled) => {
+        if (!enabled) return;
         setReducedMotion(true);
-        // Skip all animation — go straight to revealed
-        setDisplayNumber(finalNumber);
+        reelY.value = FINAL_Y;
         shhhOpacity.value = 0;
-        spinnerOpacity.value = 1;
         questionOpacity.value = 1;
-        bracketOpacity.value = 0;
         setPhase('revealed');
-        setTimeout(() => onRevealed?.(), 100);
-      }
-    }).catch(() => {});
+        track(setTimeout(() => onRevealed?.(), 120));
+      })
+      .catch(() => {});
   }, []);
 
-  // Phase 1 → Phase 2 transition
+  const onLanded = () => {
+    setPhase('landed');
+    // Gold window flash.
+    flashOpacity.value = withSequence(
+      withTiming(0.28, { duration: 140 }),
+      withTiming(0, { duration: 360 })
+    );
+    // Hold, then reveal the question text.
+    track(
+      setTimeout(() => {
+        questionOpacity.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) });
+        setPhase('revealed');
+        track(setTimeout(() => onRevealed?.(), 2500));
+      }, 560)
+    );
+  };
+
+  const startReel = () => {
+    reelY.value = START_Y;
+    reelY.value = withSequence(
+      // Decelerate through the numbers…
+      withTiming(FINAL_Y - 18, { duration: 2100, easing: Easing.bezier(0.11, 0.68, 0.16, 1) }),
+      // …overshoot slightly, then spring back to land with a bounce.
+      withSpring(FINAL_Y, { damping: 12, stiffness: 150, mass: 0.9 }, (finished) => {
+        if (finished) runOnJS(onLanded)();
+      })
+    );
+  };
+
+  // Phase 1 → 2: shhh overlay, then start the reel.
   useEffect(() => {
     if (reducedMotion) return;
-
-    // Fade shhh overlay in
     shhhOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
-
-    // After 2s (including fade-in), fade out shhh overlay
-    const shhhTimer = setTimeout(() => {
-      shhhOpacity.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
-      // After fade completes, start spinner
+    track(
       setTimeout(() => {
-        setPhase('spinning');
-        spinnerOpacity.value = withTiming(1, { duration: 200 });
-        startSpinner();
-      }, 420);
-    }, 2000);
-
-    return () => {
-      clearTimeout(shhhTimer);
-      if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
-    };
-  }, [questionId, reducedMotion]);
-
-  const startSpinner = useCallback(() => {
-    let step = 0;
-    const totalSteps = 28;
-
-    const tick = () => {
-      if (step < totalSteps) {
-        // Random question numbers from the full pool (1–186)
-        const randomNum = Math.floor(Math.random() * TOTAL_QUESTIONS) + 1;
-        setDisplayNumber(randomNum);
-        step++;
-
-        // Exponential deceleration: 50ms → ~500ms
-        const delay = 50 + Math.pow(step / totalSteps, 3.2) * 480;
-        spinTimerRef.current = setTimeout(tick, delay);
-      } else {
-        // Land on the correct number
-        setDisplayNumber(finalNumber);
-        setPhase('landed');
-
-        // Bounce scale on landing
-        numberScale.value = withSequence(
-          withTiming(1.2, { duration: 150, easing: Easing.out(Easing.cubic) }),
-          withTiming(1, { duration: 200, easing: Easing.inOut(Easing.cubic) })
-        );
-
-        // Highlight bracket flash
-        bracketOpacity.value = withSequence(
-          withTiming(0.6, { duration: 150 }),
-          withTiming(0.15, { duration: 300 })
-        );
-
-        // After 600ms hold, reveal question text
-        setTimeout(() => {
-          questionOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
-          setPhase('revealed');
-
-          // Hold question visible for 2.5s so QM can read, then signal parent
+        shhhOpacity.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
+        track(
           setTimeout(() => {
-            onRevealed?.();
-          }, 2500);
-        }, 600);
-      }
-    };
+            setPhase('spinning');
+            startReel();
+          }, 420)
+        );
+      }, 1800)
+    );
+  }, [reducedMotion]);
 
-    tick();
-  }, [finalNumber, onRevealed]);
+  const reelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: reelY.value }] }));
+  const shhhStyle = useAnimatedStyle(() => ({ opacity: shhhOpacity.value }));
+  const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
+  const questionStyle = useAnimatedStyle(() => ({ opacity: questionOpacity.value }));
 
-  // Animated styles
-  const shhhAnimStyle = useAnimatedStyle(() => ({
-    opacity: shhhOpacity.value,
-  }));
-
-  const spinnerAnimStyle = useAnimatedStyle(() => ({
-    opacity: spinnerOpacity.value,
-  }));
-
-  const numberAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: numberScale.value }],
-    opacity: numberOpacityVal.value,
-  }));
-
-  // Number area collapses smoothly: height shrinks, gap closes
-  const numberAreaAnimStyle = useAnimatedStyle(() => ({
-    maxHeight: (1 - compactProgress.value) * 220,
-    marginBottom: (1 - compactProgress.value) * 32,
-    opacity: 1 - compactProgress.value,
-    overflow: 'hidden' as const,
-  }));
-
-  // No translateY needed — parent layout switches from center to flex-start
-
-  const bracketAnimStyle = useAnimatedStyle(() => ({
-    opacity: bracketOpacity.value,
-  }));
-
-  const questionAnimStyle = useAnimatedStyle(() => ({
-    opacity: questionOpacity.value,
-  }));
+  const landed = phase === 'landed' || phase === 'revealed';
 
   return (
-    <View style={[styles.root, compact && styles.rootCompact]}>
-      {/* Spinner content (behind overlay initially) */}
-      <Animated.View style={[compact ? styles.spinnerCompact : styles.spinnerContainer, spinnerAnimStyle]}>
-        {/* Number with bracket frame — collapses in compact mode */}
-        <Animated.View style={numberAreaAnimStyle}>
-          <Text style={styles.pickingText}>Picking your question…</Text>
-          <View style={styles.numberArea}>
-            <Animated.View style={[styles.bracket, bracketAnimStyle]} />
-            <Animated.View style={numberAnimStyle}>
-              <Text
-                style={[
-                  styles.number,
-                  (phase === 'landed' || phase === 'revealed') && styles.numberLanded,
-                ]}
-              >
-                {displayNumber ?? '?'}
-              </Text>
-            </Animated.View>
-          </View>
-        </Animated.View>
+    <View style={styles.root}>
+      <View style={styles.spinnerContainer}>
+        <Text style={styles.pickingText}>Picking your question…</Text>
 
-        {/* Question card — fades in after landing, stays in compact mode */}
-        <Animated.View style={[styles.questionWrapper, questionAnimStyle]}>
+        {/* Number reel */}
+        <View style={styles.reelWindow}>
+          <Animated.View style={[styles.flash, flashStyle]} pointerEvents="none" />
+          <Animated.View style={[styles.strip, reelStyle]}>
+            {strip.map((n, i) => (
+              <View key={i} style={styles.cell}>
+                <Text style={[styles.number, i === LAND_INDEX && landed && styles.numberLanded]}>{n}</Text>
+              </View>
+            ))}
+          </Animated.View>
+          <LinearGradient colors={[Colors.bg, 'transparent']} style={styles.fadeTop} pointerEvents="none" />
+          <LinearGradient colors={['transparent', Colors.bg]} style={styles.fadeBottom} pointerEvents="none" />
+          <View style={styles.bracket} pointerEvents="none" />
+        </View>
+
+        {/* Secret question — fades in after landing */}
+        <Animated.View style={[styles.questionWrapper, questionStyle]}>
           <View style={styles.questionCard}>
             <Text style={styles.questionLabel}>YOUR SECRET QUESTION</Text>
             <Text style={styles.questionText}>{realQuestion?.text ?? ''}</Text>
           </View>
         </Animated.View>
-      </Animated.View>
+      </View>
 
-      {/* Shhh overlay — sits on top */}
+      {/* Shhh privacy overlay */}
       {phase === 'shhh' && (
-        <Animated.View style={[styles.shhhOverlay, shhhAnimStyle]} pointerEvents={phase === 'shhh' ? 'auto' : 'none'}>
+        <Animated.View style={[styles.shhhOverlay, shhhStyle]}>
           <Text style={styles.shhhEmoji}>🤫</Text>
           <Text style={styles.shhhText}>Shhh... don't show anyone</Text>
         </Animated.View>
@@ -223,34 +179,26 @@ export function SlotMachine({ questionId, visibleQuestionIds, onRevealed, compac
   );
 }
 
+const BRACKET_INSET = 24;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     position: 'relative',
   },
-  rootCompact: {
-    flex: 0,
-  },
 
-  // Shhh overlay
+  // Shhh overlay — navy privacy screen
   shhhOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(18,18,18,0.95)',
+    backgroundColor: Colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
     gap: 16,
+    borderRadius: Radius.xl,
   },
-  shhhEmoji: {
-    fontSize: 56,
-    textAlign: 'center',
-  },
-  shhhText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.white,
-    textAlign: 'center',
-  },
+  shhhEmoji: { fontSize: 56, textAlign: 'center' },
+  shhhText: { fontSize: 20, fontWeight: '700', color: Colors.onNavy, textAlign: 'center' },
 
   // Spinner
   spinnerContainer: {
@@ -259,57 +207,88 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 32,
   },
-  spinnerCompact: {
-    alignItems: 'center',
-    gap: 0,
-  },
   pickingText: {
     ...Typography.body,
-    color: Colors.muted,
+    color: Colors.inkSoft,
     textAlign: 'center',
-    marginBottom: 16,
   },
-  numberArea: {
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  // Reel
+  reelWindow: {
+    width: '100%',
+    height: WINDOW_H,
+    overflow: 'hidden',
     position: 'relative',
-    paddingVertical: 24,
-    paddingHorizontal: 40,
+    alignItems: 'center',
   },
-  bracket: {
+  strip: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    backgroundColor: 'rgba(255,215,0,0.06)',
+    alignItems: 'center',
+  },
+  cell: {
+    height: CELL_H,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   number: {
-    fontSize: 72,
+    fontFamily: Mono,
+    fontSize: 66,
     fontWeight: '800',
-    color: Colors.muted,
+    color: Colors.inkSoft,
     textAlign: 'center',
-    minWidth: 100,
   },
   numberLanded: {
-    color: Colors.primary,
+    color: Colors.navy,
+  },
+  bracket: {
+    position: 'absolute',
+    top: CENTER_OFFSET,
+    left: BRACKET_INSET,
+    right: BRACKET_INSET,
+    height: CELL_H,
+    borderRadius: 16,
+    borderWidth: 2.5,
+    borderColor: Colors.primary,
+  },
+  flash: {
+    position: 'absolute',
+    top: CENTER_OFFSET,
+    left: BRACKET_INSET,
+    right: BRACKET_INSET,
+    height: CELL_H,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+  },
+  fadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 34,
+  },
+  fadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 34,
   },
 
-  // Question card (matches SecretQuestionCard style)
+  // Secret-question hero card — navy "classified" surface with gold label
   questionWrapper: {
     width: '100%',
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   questionCard: {
-    backgroundColor: Colors.raised,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: Radius.lg,
+    backgroundColor: Colors.navy,
+    borderRadius: Radius.xl,
     padding: Spacing['2xl'],
     gap: Spacing.sm,
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.navyEdge,
   },
   questionLabel: {
     ...Typography.label,
@@ -318,6 +297,6 @@ const styles = StyleSheet.create({
   },
   questionText: {
     ...Typography.display,
-    color: Colors.white,
+    color: Colors.onNavy,
   },
 });

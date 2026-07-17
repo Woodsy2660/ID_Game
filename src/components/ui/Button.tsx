@@ -11,90 +11,68 @@ interface Props {
 }
 
 /**
- * Button — 4 variants matching the design system:
- *   primary:  Gold bg, dark text (main CTA)
- *   secondary: Outlined with border, white text
- *   inverted: White bg, dark text
- *   outlined: Transparent bg, border, muted text
+ * Chunky, pressable game button. A solid coloured bottom edge gives depth;
+ * pressing nudges the face down toward the edge for a tactile "press" feel.
+ * Cross-platform (native + web) — depth is a border, not a shadow.
+ *
+ *   primary   — gold fill, navy text (main CTA)
+ *   secondary — white surface, navy text + navy edge
+ *   inverted  — navy fill, light text
+ *   outlined  — transparent, hairline border (low-emphasis)
  */
 export function Button({ title, onPress, variant = 'primary', disabled, style }: Props) {
+  const v = VARIANTS[variant];
+  const isFlat = variant === 'outlined';
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.base,
-        variantStyles[variant],
-        pressed && !disabled && styles.pressed,
+        { backgroundColor: v.bg },
+        v.border ? { borderWidth: 1.5, borderColor: v.border } : null,
+        !isFlat ? { borderBottomWidth: EDGE, borderBottomColor: v.edge } : null,
+        pressed && !disabled ? styles.pressed : null,
         disabled && styles.disabled,
         style,
       ]}
     >
-      <Text style={[styles.label, labelStyles[variant]]}>
-        {title}
-      </Text>
+      <Text style={[styles.label, { color: v.fg }]}>{title}</Text>
     </Pressable>
   );
 }
 
+const EDGE = 4;
+
+const VARIANTS = {
+  primary:   { bg: Colors.primary, fg: Colors.onPrimary, edge: Colors.primaryEdge,  border: '' },
+  secondary: { bg: Colors.surface, fg: Colors.navy,      edge: Colors.navyEdge,      border: Colors.navy },
+  inverted:  { bg: Colors.navy,    fg: Colors.onNavy,    edge: Colors.navyEdge,      border: '' },
+  outlined:  { bg: 'transparent',  fg: Colors.inkSoft,   edge: '',                   border: Colors.borderStrong },
+} as const;
+
 const styles = StyleSheet.create({
   base: {
-    height: 52,
+    minHeight: 54,
     borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing['2xl'],
+    paddingVertical: 15,
   },
   pressed: {
     transform: [{ translateY: 2 }],
-    opacity: 0.9,
+    opacity: 0.94,
   },
   disabled: {
-    opacity: 0.35,
+    opacity: 0.4,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-  },
-});
-
-const variantStyles = StyleSheet.create({
-  primary: {
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primaryDim,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
-  inverted: {
-    backgroundColor: Colors.white,
-  },
-  outlined: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: Colors.muted,
-  },
-});
-
-const labelStyles = StyleSheet.create({
-  primary: {
-    color: Colors.black,
-  },
-  secondary: {
-    color: Colors.white,
-  },
-  inverted: {
-    color: Colors.black,
-  },
-  outlined: {
-    color: Colors.muted,
   },
 });

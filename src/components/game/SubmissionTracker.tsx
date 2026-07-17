@@ -83,12 +83,12 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.raised,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.bgAlt,
+    borderWidth: 1.5,
+    borderColor: Colors.borderStrong,
   },
   indicatorActive: {
     backgroundColor: Colors.tertiary,
@@ -96,9 +96,10 @@ const styles = StyleSheet.create({
   },
   name: {
     ...Typography.body,
-    color: Colors.muted,
+    color: Colors.inkSoft,
   },
   nameActive: {
-    color: Colors.white,
+    color: Colors.ink,
+    fontWeight: '700',
   },
 });

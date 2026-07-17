@@ -32,7 +32,7 @@ export default function DevLobby() {
   const handleStartGame = () => {
     setStarted(true);
     // initGame without initialRound → client-side question/QM selection (fine for testing)
-    initGame(MOCK_PLAYERS, LOCAL_PLAYER_ID, 'DEV000');
+    initGame(MOCK_PLAYERS, LOCAL_PLAYER_ID, 'DEV000', 'boys');
     router.replace('/(game)/round-start');
   };
 
@@ -96,7 +96,7 @@ export default function DevLobby() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.bg,
     paddingTop: Layout.screenPaddingTop,
   },
   header: {
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   roomCode: {
     ...Typography.display,
     letterSpacing: 8,
-    color: Colors.primary,
+    color: Colors.ink,
   },
   hint: {
     ...Typography.label,
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   playerNameLocal: {
-    color: Colors.primary,
+    color: Colors.ink,
   },
   badges: {
     flexDirection: 'row',

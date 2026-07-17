@@ -10,14 +10,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { ResultSplash } from '../../src/components/game/ResultSplash';
+import { LeaveGameButton } from '../../src/components/game/LeaveGameButton';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
-import { usePlayerStore } from '../../src/stores/playerStore';
-import { removeAllChannels } from '../../src/lib/channelCleanup';
+import { usePlayerStore } from '../../src/store/playerStore';
 import { Colors, Spacing, Typography, Radius } from '../../src/theme';
 import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay';
 import { useScrollFades } from '../../src/hooks/useScrollFades';
-import questionBank from '../../src/data/questionBank.json';
+import { findQuestion } from '../../src/data/packs';
 
 /**
  * Round Results screen — role-aware, automatic transition.
@@ -31,12 +31,17 @@ export default function RoundResultsScreen() {
   const roundResults = useGameStore((s) => s.roundResults);
   const advancePhase = useGameStore((s) => s.advancePhase);
   const roomCode = useGameStore((s) => s.roomCode);
+  const pack = useGameStore((s) => s.pack);
 
   useGameChannel(roomCode ?? '', {
     onGameEnded: () => {
-      removeAllChannels();
       usePlayerStore.getState().clearRoom();
-      router.replace('/');
+      router.replace('/(game)/final-results');
+    },
+    // QM forfeited or left mid-round — skip results, go straight to leaderboard.
+    onRoundForfeited: () => {
+      useGameStore.getState().forfeitRound();
+      router.replace('/(game)/leaderboard');
     },
   });
 
@@ -50,7 +55,7 @@ export default function RoundResultsScreen() {
     onContentSizeChange,
     onLayout: fadeLayout,
   } = useScrollFades();
-  const question = questionBank.find((q) => q.id === latestResult?.questionId);
+  const question = findQuestion(pack, latestResult?.questionId ?? -1);
 
   // Determine if local player was correct
   const myAnswer = latestResult?.answers.find((a) => a.playerId === localPlayerId);
@@ -70,7 +75,7 @@ export default function RoundResultsScreen() {
   // ─── QM view: shows all player results ───────────────────────────────────
   if (isQM()) {
     return (
-      <ScreenContainer>
+      <ScreenContainer overlay={<LeaveGameButton />}>
         <View style={styles.scrollWrapper}>
           <ScrollView
             style={styles.scroll}
@@ -88,6 +93,7 @@ export default function RoundResultsScreen() {
                 qmName={qmPlayer?.displayName ?? '???'}
                 answers={latestResult.answers}
                 players={players}
+                pack={pack}
               />
             )}
           </ScrollView>
@@ -118,7 +124,7 @@ function AnswererResultView({
   questionText: string;
   qmName: string;
 }) {
-  const bgColor = isCorrect ? Colors.success : (Colors.error || '#EF4444');
+  const bgColor = isCorrect ? Colors.success : Colors.error;
   const resultLabel = isCorrect ? 'Correct' : 'Incorrect';
   const icon = isCorrect ? '✓' : '✕';
   const scoreLabel = isCorrect ? '+1 point' : 'No points this round';
@@ -208,29 +214,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resultIcon: {
-    fontSize: 72,
+    fontSize: 76,
     fontWeight: '900',
-    color: Colors.black,
+    color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 80,
+    lineHeight: 84,
     marginBottom: 4,
   },
   resultLabel: {
     ...Typography.display,
-    fontSize: 36,
-    lineHeight: 42,
+    fontSize: 38,
+    lineHeight: 44,
     fontWeight: '900',
-    color: Colors.black,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   scoreLabel: {
     ...Typography.label,
-    color: 'rgba(0,0,0,0.55)',
+    color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
     marginTop: 4,
   },
   questionReveal: {
-    backgroundColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
     borderRadius: Radius.lg,
     padding: 24,
     gap: Spacing.sm,
@@ -239,11 +245,11 @@ const styles = StyleSheet.create({
   },
   revealHeading: {
     ...Typography.label,
-    color: 'rgba(0,0,0,0.5)',
+    color: 'rgba(255,255,255,0.85)',
   },
   revealQuestion: {
     ...Typography.heading,
-    color: Colors.black,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
 });

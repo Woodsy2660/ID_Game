@@ -18,9 +18,12 @@ export interface Player {
 }
 
 export interface Question {
-  id: number;           // matches question bank index
+  id: number;           // matches question bank index (namespaced per pack)
   text: string;
 }
+
+/** The three question packs. A room is locked to one for its whole life. */
+export type PackId = 'boys' | 'girls' | 'infamous';
 
 export interface RoundAnswer {
   playerId: string;
@@ -42,6 +45,7 @@ export interface GameStartPayload {
   questionId: number;
   visibleQuestionIds: number[];
   roundId: string;
+  pack: PackId;
 }
 
 /** Payload broadcast by the start-round edge function on the game:{room_code} channel. */
@@ -52,4 +56,5 @@ export interface RoundStartedPayload {
   visibleQuestionIds: number[];
   roundId: string;
   roundNumber: number;
+  pack: PackId;
 }

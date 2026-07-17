@@ -22,24 +22,23 @@ export function QuestionsPreviewButton({ onPress }: Props) {
 
 const styles = StyleSheet.create({
   button: {
-    height: 52,
+    height: 50,
     borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing['2xl'],
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.bgAlt,
     borderWidth: 1.5,
     borderColor: Colors.border,
   },
   pressed: {
-    transform: [{ translateY: 2 }],
-    opacity: 0.9,
+    transform: [{ translateY: 1 }],
+    opacity: 0.85,
   },
   label: {
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: Colors.white,
+    letterSpacing: 0.4,
+    color: Colors.ink,
   },
 });

@@ -39,6 +39,7 @@ export function QMAnnouncement({ playerName, roundNumber, isLocalPlayer }: Props
       <Text style={styles.roundLabel}>ROUND {roundNumber}</Text>
       <Text style={styles.title}>Question Master</Text>
       <View style={styles.nameCard}>
+        <View style={styles.stamp}><Text style={styles.stampText}>QM</Text></View>
         <Text style={styles.name}>{playerName}</Text>
       </View>
       {isLocalPlayer && (
@@ -55,28 +56,46 @@ const styles = StyleSheet.create({
   },
   roundLabel: {
     ...Typography.label,
-    color: Colors.muted,
+    color: Colors.inkSoft,
   },
   title: {
     ...Typography.display,
-    color: Colors.primary,
+    color: Colors.ink,
   },
   nameCard: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.lg,
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xl,
+    paddingVertical: Spacing.xl,
     paddingHorizontal: Spacing['3xl'],
+    borderBottomWidth: 5,
+    borderBottomColor: Colors.primaryEdge,
+    minWidth: 220,
+  },
+  stamp: {
+    borderWidth: 2,
+    borderColor: Colors.onPrimary,
+    borderRadius: Radius.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    transform: [{ rotate: '-3deg' }],
+  },
+  stampText: {
+    ...Typography.label,
+    color: Colors.onPrimary,
+    fontWeight: '800',
   },
   name: {
-    ...Typography.heading,
-    color: Colors.white,
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.onPrimary,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   hint: {
     ...Typography.body,
-    color: Colors.muted,
+    color: Colors.inkSoft,
     textAlign: 'center',
     marginTop: Spacing.sm,
   },

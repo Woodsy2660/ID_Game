@@ -5,9 +5,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { User } from '@supabase/supabase-js'
 import { useAuth } from '../src/hooks/useAuth'
-import { usePlayerStore } from '../src/stores/playerStore'
+import { usePlayerStore } from '../src/store/playerStore'
 import { supabase } from '../src/lib/supabase'
-import { RejoinPrompt } from '../src/components/RejoinPrompt'
+import { RejoinPrompt } from '../src/components/game/RejoinPrompt'
 import { removeAllChannels } from '../src/lib/channelCleanup'
 import { Colors } from '../src/theme'
 
@@ -50,8 +50,16 @@ export default function RootLayout() {
     rejoinChecked.current = true
 
     const checkRejoin = async () => {
-      const { room_id } = usePlayerStore.getState()
+      const { room_id, session_saved_at } = usePlayerStore.getState()
       if (!room_id) return
+
+      // Clear expired local state on open — game data is temporary (24h max).
+      const STALE_MS = 24 * 60 * 60 * 1000
+      if (session_saved_at && Date.now() - session_saved_at > STALE_MS) {
+        removeAllChannels()
+        usePlayerStore.getState().clearPersistedSession()
+        return
+      }
 
       const { data: room } = await supabase
         .from('rooms')
@@ -75,19 +83,19 @@ export default function RootLayout() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.navy} />
       </View>
     )
   }
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <AuthContext.Provider value={{ user, authError, setDisplayName }}>
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: Colors?.black || '#121212' },
+            contentStyle: { backgroundColor: Colors.bg },
             animation: 'fade'
           }}
         />
@@ -104,6 +112,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212',
+    backgroundColor: Colors.bg,
   },
 })

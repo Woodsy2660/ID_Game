@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { removeChannelByName } from '../lib/channelCleanup'
-import type { GameStartPayload } from '../store/types'
+import type { GameStartPayload, PackId } from '../store/types'
 
 interface RoomPlayer {
   player_id: string
   display_name: string
   is_host: boolean
+  pack?: PackId | null
 }
 
 interface UseRoomReturn {
@@ -33,12 +34,16 @@ export function useRoom(
   player_id: string,
   display_name: string,
   is_host: boolean,
-  onGameStart: (payload: GameStartPayload) => void
+  onGameStart: (payload: GameStartPayload) => void,
+  pack: PackId | null = null
 ): UseRoomReturn {
   const [players, setPlayers] = useState<RoomPlayer[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const onGameStartRef = useRef(onGameStart)
   onGameStartRef.current = onGameStart
+  // Keep the latest pack in a ref so re-tracking uses it without resubscribing.
+  const packRef = useRef(pack)
+  packRef.current = pack
 
   useEffect(() => {
     // Don't subscribe until we have valid room info
@@ -49,7 +54,8 @@ export function useRoom(
 
     const channelName = `game:${room_code}`
 
-    console.log('[useRoom] Subscribing to room', { room_code, player_id, display_name, is_host })
+    // Note: display names are intentionally omitted from logs (no nicknames in logs).
+    console.log('[useRoom] Subscribing to room', { room_code, player_id, is_host })
 
     // ── Remove stale channels from previous sessions ─────────────────────
     // Also remove legacy presence-only channel name if it exists.
@@ -67,14 +73,15 @@ export function useRoom(
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<RoomPlayer>()
         const list = Object.values(state).flat()
-        console.log('[useRoom] Presence sync — players:', list.map(p => p.display_name))
+        // Log counts only — never nicknames.
+        console.log('[useRoom] Presence sync — player count:', list.length)
         setPlayers(list)
       })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        console.log('[useRoom] Player joined:', newPresences)
+      .on('presence', { event: 'join' }, () => {
+        console.log('[useRoom] Player joined')
       })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        console.log('[useRoom] Player left:', leftPresences)
+      .on('presence', { event: 'leave' }, () => {
+        console.log('[useRoom] Player left')
       })
       .on('broadcast', { event: 'game:started' }, (event) => {
         console.log('[useRoom] Received game:started broadcast')
@@ -84,8 +91,16 @@ export function useRoom(
         console.log('[useRoom] Channel status:', status)
         if (status === 'SUBSCRIBED') {
           setIsConnected(true)
-          const trackResult = await channel.track({ player_id, display_name, is_host })
-          console.log('[useRoom] Track result:', trackResult)
+          // The host advertises the room's pack over presence so joiners learn
+          // it peer-to-peer (works even before the pack reaches them any other way).
+          const trackResult = await channel.track({
+            player_id,
+            display_name,
+            is_host,
+            pack: is_host ? packRef.current ?? null : null,
+          })
+          // Log status only — the track payload carries the nickname.
+          console.log('[useRoom] Track status:', trackResult)
         } else if (status === 'CHANNEL_ERROR') {
           console.warn('[useRoom] Channel error — will retry')
           setIsConnected(false)

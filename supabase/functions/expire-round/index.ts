@@ -44,11 +44,12 @@ Deno.serve(async (req) => {
   // Fetch round to verify timer has actually expired
   const { data: round } = await supabase
     .from('rounds')
-    .select('id, question_id, qm_id, answer_phase_started_at')
+    .select('id, question_id, qm_id, answer_phase_started_at, forfeited')
     .eq('id', round_id)
     .single()
 
-  if (!round || !round.answer_phase_started_at) {
+  // A forfeited/left round has no timer and must never be scored.
+  if (!round || !round.answer_phase_started_at || round.forfeited) {
     return new Response(JSON.stringify({ expired: false, reason: 'no_timer' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

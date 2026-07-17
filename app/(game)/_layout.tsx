@@ -16,7 +16,7 @@ export default function GameLayout() {
         screenOptions={{
           headerShown: false,
           gestureEnabled: false,
-          contentStyle: { backgroundColor: Colors?.black || '#121212' },
+          contentStyle: { backgroundColor: Colors.bg },
           animation: 'fade',
         }}
       />

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { GamePhase, Player, RoundAnswer, RoundResult, RoundStartedPayload } from './types';
-import questionBank from '../data/questionBank.json';
+import type { GamePhase, PackId, Player, RoundAnswer, RoundResult, RoundStartedPayload } from './types';
+import { getQuestions } from '../data/packs';
 
 /**
  * Game state store — manages the state machine and round data.
@@ -23,6 +23,7 @@ interface GameState {
   // Session — populated by lobby (MVP dev) or mock setup
   roomCode: string | null;
   localPlayerId: string | null;
+  pack: PackId | null;   // the room's fixed question pack
   players: Player[];
 
   // Round state
@@ -31,7 +32,7 @@ interface GameState {
   roundId: string | null;        // UUID of the current rounds row
   qmPlayerId: string | null;
   questionId: number | null;
-  visibleQuestionIds: number[];  // 10 IDs shown to answerers (1 real + 9 decoys)
+  visibleQuestionIds: number[];  // IDs shown to answerers (1 real + decoys)
   usedQuestionIds: number[];     // tracks used questions across session
 
   // Timer
@@ -59,6 +60,7 @@ interface GameActions {
   // Phase transitions
   advancePhase: () => void;
   setPhase: (phase: GamePhase) => void;
+  forfeitRound: () => void;
 
   // Round lifecycle
   startRound: () => void;
@@ -74,23 +76,25 @@ interface GameActions {
     players: Player[],
     localPlayerId: string,
     roomCode?: string,
+    pack?: PackId | null,
     initialRound?: { qmPlayerId: string; questionId: number; visibleQuestionIds: number[]; roundId: string }
   ) => void;
   resetGame: () => void;
   removePlayer: (playerId: string) => void;
 }
 
-const pickQuestion = (usedIds: number[]): number => {
-  const available = questionBank.filter((q) => !usedIds.includes(q.id));
-  if (available.length === 0) return questionBank[0].id;
-  return available[Math.floor(Math.random() * available.length)].id;
+const pickQuestion = (pack: PackId | null, usedIds: number[]): number => {
+  const bank = getQuestions(pack);
+  if (bank.length === 0) return -1;
+  const available = bank.filter((q) => !usedIds.includes(q.id));
+  const pool = available.length > 0 ? available : bank;
+  return pool[Math.floor(Math.random() * pool.length)].id;
 };
 
-const pickDecoys = (correctId: number, usedIds: number[], count: number): number[] => {
-  const pool = questionBank
+const pickDecoys = (pack: PackId | null, correctId: number, usedIds: number[], count: number): number[] => {
+  const pool = getQuestions(pack)
     .filter((q) => q.id !== correctId && !usedIds.includes(q.id))
     .map((q) => q.id);
-  // Shuffle and take `count`
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 };
@@ -99,6 +103,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   // Initial state
   roomCode: null,
   localPlayerId: null,
+  pack: null,
   players: [],
   phase: 'round_start',
   currentRound: 0,
@@ -143,15 +148,26 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setPhase: (phase: GamePhase) => set({ phase }),
 
+  // Forfeit the current turn — deterministic across all clients regardless of
+  // which phase each was in (the QM sits in qm_active while answerers are in
+  // answer_phase, so a relative advancePhase() would desync them). No score
+  // change; clear the round timer and submissions so nothing stale lingers.
+  forfeitRound: () =>
+    set({
+      phase: 'leaderboard',
+      answerPhaseStartedAt: null,
+      submissions: {},
+    }),
+
   // Start a round — picks QM, draws question, generates decoy set
   startRound: () => {
-    const { players, currentRound, usedQuestionIds } = get();
+    const { players, currentRound, usedQuestionIds, pack } = get();
     if (players.length === 0) return;
 
     const qmIdx = currentRound % players.length;
     const qmPlayerId = players[qmIdx].id;
-    const questionId = pickQuestion(usedQuestionIds);
-    const decoyIds = pickDecoys(questionId, usedQuestionIds, 9);
+    const questionId = pickQuestion(pack, usedQuestionIds);
+    const decoyIds = pickDecoys(pack, questionId, usedQuestionIds, 5);
     const visibleQuestionIds = [questionId, ...decoyIds].sort(() => Math.random() - 0.5);
 
     // Initialise scores for new players
@@ -239,6 +255,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       visibleQuestionIds: payload.visibleQuestionIds,
       usedQuestionIds: [...state.usedQuestionIds, payload.questionId],
       players: payload.players,
+      pack: payload.pack ?? state.pack,
       answerPhaseStartedAt: null,
       submissions: {},
       phase: 'round_start',
@@ -255,7 +272,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   // When initialRound is provided (from the start-game edge function), use those
   // server-assigned values so all devices share the same QM and question.
   // When omitted, fall back to client-side selection (single-device / dev mode).
-  initGame: (players, localPlayerId, roomCode, initialRound) => {
+  initGame: (players, localPlayerId, roomCode, pack, initialRound) => {
     const baseScores: Record<string, number> = {};
     players.forEach((p) => { baseScores[p.id] = 0; });
 
@@ -263,6 +280,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       players,
       localPlayerId,
       roomCode: roomCode ?? null,
+      pack: pack ?? null,
       currentRound: 0,
       roundId: null,
       usedQuestionIds: [],
@@ -297,6 +315,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({
       roomCode: null,
       localPlayerId: null,
+      pack: null,
       players: [],
       phase: 'round_start',
       currentRound: 0,

@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     // Update room status to answer_phase
     await supabaseAdmin
       .from('rooms')
-      .update({ status: 'answer_phase' })
+      .update({ status: 'answer_phase', last_active_at: answerPhaseStartedAt })
       .eq('id', room.id)
   }
 

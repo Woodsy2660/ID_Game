@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { View, Text, Modal, StyleSheet, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
-import { supabase } from '../lib/supabase'
-import { usePlayerStore } from '../stores/playerStore'
-import { useGameStore } from '../store/gameStore'
-import { Button } from './ui/Button'
-import { Colors, Spacing, Typography, Radius } from '../theme'
+import { supabase } from '../../lib/supabase'
+import { usePlayerStore } from '../../store/playerStore'
+import { useGameStore } from '../../store/gameStore'
+import { Button } from '../ui/Button'
+import { AdultConsentGate } from './AdultConsentGate'
+import { ADULT_WARNING_VERSION } from '../../data/packs'
+import { Colors, Spacing, Typography, Radius } from '../../theme'
 
 interface RejoinPromptProps {
   onDismiss: () => void
@@ -14,10 +16,12 @@ interface RejoinPromptProps {
 export function RejoinPrompt({ onDismiss }: RejoinPromptProps) {
   const router = useRouter()
   const { room_id, room_code, player_id, display_name, clearRoom, clearPersistedSession } = usePlayerStore()
+  const setAdultConfirmed = usePlayerStore((s) => s.setAdultConfirmed)
   const setAnswerPhaseStartedAt = useGameStore((s) => s.setAnswerPhaseStartedAt)
   const [loading, setLoading] = useState(false)
+  const [showConsent, setShowConsent] = useState(false)
 
-  const handleRejoin = async () => {
+  const handleRejoin = async (adultConfirmed = false) => {
     if (!room_code || !player_id || !display_name) {
       clearPersistedSession()
       onDismiss()
@@ -25,21 +29,35 @@ export function RejoinPrompt({ onDismiss }: RejoinPromptProps) {
     }
 
     setLoading(true)
+    setShowConsent(false)
 
     try {
       const { data, error } = await supabase.functions.invoke('join-room', {
-        body: { room_code, display_name },
+        body: {
+          room_code,
+          display_name,
+          adult_confirmed: adultConfirmed,
+          adult_warning_version: ADULT_WARNING_VERSION,
+        },
       })
 
       if (error) {
         const body = error.context ? await error.context.json().catch(() => null) : null
         const code = body?.error
+        if (code === 'ADULT_CONFIRMATION_REQUIRED') {
+          // Fresh device / never confirmed for this mature room — gate before entry.
+          setLoading(false)
+          setShowConsent(true)
+          return
+        }
         if (code === 'ROOM_NOT_FOUND' || code === 'ROOM_CLOSED') {
           clearPersistedSession()
         }
         onDismiss()
         return
       }
+
+      setAdultConfirmed(!!data.adult_confirmed)
 
       if (!data || !data.is_late_join) {
         // Room is in lobby — just go to lobby
@@ -63,6 +81,7 @@ export function RejoinPrompt({ onDismiss }: RejoinPromptProps) {
         players,
         player_id,
         data.room_code,
+        data.pack,
         hasRound
           ? {
               qmPlayerId: data.current_qm_id,
@@ -136,15 +155,22 @@ export function RejoinPrompt({ onDismiss }: RejoinPromptProps) {
           )}
 
           {loading ? (
-            <ActivityIndicator color={Colors.primary} style={styles.loader} />
+            <ActivityIndicator color={Colors.navy} style={styles.loader} />
           ) : (
             <View style={styles.buttons}>
-              <Button title="Rejoin" onPress={handleRejoin} />
+              <Button title="Rejoin" onPress={() => handleRejoin()} />
               <Button title="Leave Game" onPress={handleLeave} variant="outlined" />
             </View>
           )}
         </View>
       </View>
+
+      <AdultConsentGate
+        visible={showConsent}
+        loading={loading}
+        onConfirm={() => handleRejoin(true)}
+        onCancel={() => { setShowConsent(false); onDismiss() }}
+      />
     </Modal>
   )
 }
@@ -189,7 +215,7 @@ const styles = StyleSheet.create({
   code: {
     fontSize: 22,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.ink,
     letterSpacing: 4,
   },
   buttons: {

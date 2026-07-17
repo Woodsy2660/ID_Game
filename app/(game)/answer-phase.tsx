@@ -5,11 +5,12 @@ import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
 import { Button } from '../../src/components/ui/Button';
 import { SubmissionTracker } from '../../src/components/game/SubmissionTracker';
 import { GuessOptionList } from '../../src/components/game/GuessOptionList';
+import { LeaveGameButton } from '../../src/components/game/LeaveGameButton';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
-import { usePlayerStore } from '../../src/stores/playerStore';
+import { usePlayerStore } from '../../src/store/playerStore';
 import { supabase } from '../../src/lib/supabase';
-import { CountdownTimer } from '../../src/components/CountdownTimer';
+import { CountdownTimer } from '../../src/components/game/CountdownTimer';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import { removeAllChannels } from '../../src/lib/channelCleanup';
 
@@ -34,6 +35,7 @@ export default function AnswerPhaseScreen() {
   const visibleQuestionIds = useGameStore((s) => s.visibleQuestionIds);
   const players = useGameStore((s) => s.players);
   const qmPlayerId = useGameStore((s) => s.qmPlayerId);
+  const pack = useGameStore((s) => s.pack);
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const submissions = useGameStore((s) => s.submissions);
   const answerPhaseStartedAt = useGameStore((s) => s.answerPhaseStartedAt);
@@ -47,6 +49,18 @@ export default function AnswerPhaseScreen() {
   const qmPlayer = players.find((p) => p.id === qmPlayerId);
   const answerers = players.filter((p) => p.id !== qmPlayerId);
   const submittedCount = Object.keys(submissions).length;
+
+  // Show at most 6 guess options. The server sends a shuffled set (1 real +
+  // decoys); if it sends more than 6, trim to 6 while always keeping the real
+  // question, deterministically (sorted by id) so every device shows the same
+  // set in the same order.
+  const MAX_OPTIONS = 6;
+  const displayQuestionIds = React.useMemo(() => {
+    if (visibleQuestionIds.length <= MAX_OPTIONS) return visibleQuestionIds;
+    const decoys = visibleQuestionIds.filter((id) => id !== questionId);
+    const kept = [questionId as number, ...decoys.slice(0, MAX_OPTIONS - 1)];
+    return kept.sort((a, b) => a - b);
+  }, [visibleQuestionIds, questionId]);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -102,6 +116,13 @@ export default function AnswerPhaseScreen() {
     },
     // Timer expired server-side — expire-round broadcast round:results to everyone
     onRoundExpired: () => navigateToResults(true),
+    // QM forfeited or left mid-round — abandon the guess, jump to leaderboard
+    onRoundForfeited: () => {
+      if (transitionedRef.current) return;
+      transitionedRef.current = true;
+      useGameStore.getState().forfeitRound();
+      router.replace('/(game)/leaderboard');
+    },
   });
   // Assign after useGameChannel so navigateToResults can call it via ref
   broadcastResultsReadyRef.current = broadcastResultsReady;
@@ -157,7 +178,7 @@ export default function AnswerPhaseScreen() {
   // ─── Answerer waiting view — shown after submitting until everyone is done ─
   if (hasSubmitted) {
     return (
-      <ScreenContainer>
+      <ScreenContainer overlay={<LeaveGameButton />}>
         <View style={styles.waitingContainer}>
           <View style={styles.waitingTop}>
             <View style={styles.lockedBadge}>
@@ -180,7 +201,7 @@ export default function AnswerPhaseScreen() {
 
   // ─── Answerer picking view ─────────────────────────────────────────────────
   return (
-    <ScreenContainer>
+    <ScreenContainer overlay={<LeaveGameButton />}>
       <View style={styles.answererContainer}>
         <View style={styles.header}>
           <Text style={styles.headerLabel}>
@@ -195,7 +216,8 @@ export default function AnswerPhaseScreen() {
         </View>
 
         <GuessOptionList
-          visibleQuestionIds={visibleQuestionIds}
+          visibleQuestionIds={displayQuestionIds}
+          pack={pack}
           onSelect={handleSelect}
           selectedId={selectedId}
           disabled={false}
@@ -223,7 +245,7 @@ const styles = StyleSheet.create({
   },
   headerLabel: {
     ...Typography.label,
-    color: Colors.primary,
+    color: Colors.ink,
     textAlign: 'center',
   },
   submitArea: {
@@ -242,14 +264,14 @@ const styles = StyleSheet.create({
   lockedBadge: {
     backgroundColor: Colors.tertiary,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xs,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   lockedBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.8,
-    color: Colors.black,
+    color: Colors.onNavy,
     textTransform: 'uppercase',
   },
   waitingTitle: {

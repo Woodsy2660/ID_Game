@@ -4,11 +4,14 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Colors, Spacing, Typography, Radius } from '../../theme';
 import { ScrollFadeOverlay } from '../ui/ScrollFadeOverlay';
 import { useScrollFades } from '../../hooks/useScrollFades';
-import questionBank from '../../data/questionBank.json';
+import { findQuestion } from '../../data/packs';
+import type { PackId } from '../../store/types';
 
 interface Props {
   /** The 10 visible question IDs to show as options */
   visibleQuestionIds: number[];
+  /** The room's pack — options are resolved against it */
+  pack: PackId | null;
   /** Called with the selected question ID when the player taps an option */
   onSelect: (questionId: number) => void;
   /** Whether submissions are locked (already submitted) */
@@ -17,9 +20,9 @@ interface Props {
   selectedId?: number | null;
 }
 
-export function GuessOptionList({ visibleQuestionIds, onSelect, disabled, selectedId }: Props) {
+export function GuessOptionList({ visibleQuestionIds, pack, onSelect, disabled, selectedId }: Props) {
   const questions = visibleQuestionIds.map((id) => {
-    const q = questionBank.find((q) => q.id === id);
+    const q = findQuestion(pack, id);
     return { id, text: q?.text ?? 'Unknown question' };
   });
 
@@ -95,28 +98,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.border,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.lg,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     gap: Spacing.md,
   },
   optionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.raised,
+    borderColor: Colors.primaryEdge,
+    backgroundColor: Colors.primaryMuted,
   },
   optionPressed: {
-    backgroundColor: Colors.raised,
+    backgroundColor: Colors.bgAlt,
   },
   optionDisabled: {
     opacity: 0.4,
   },
   numberBadge: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     borderRadius: Radius.xs,
-    backgroundColor: Colors.raised,
+    backgroundColor: Colors.bgAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -125,19 +128,20 @@ const styles = StyleSheet.create({
   },
   optionNumber: {
     ...Typography.label,
-    color: Colors.muted,
+    color: Colors.inkSoft,
     lineHeight: 14,
   },
   optionNumberSelected: {
-    color: Colors.black,
+    color: Colors.onPrimary,
   },
   optionText: {
     ...Typography.body,
-    color: Colors.white,
+    color: Colors.ink,
     flex: 1,
   },
   optionTextSelected: {
-    color: Colors.primary,
+    color: Colors.ink,
+    fontWeight: '700',
   },
   optionTextDisabled: {
     color: Colors.muted,

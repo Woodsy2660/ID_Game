@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Text, StyleSheet } from 'react-native'
-import { Colors } from '../theme'
+import { Colors, Mono } from '../../theme'
 
 interface CountdownTimerProps {
   answerPhaseStartedAt: string  // ISO timestamp from round row
@@ -46,18 +46,22 @@ export function CountdownTimer({
     return () => clearInterval(tick)
   }, [answerPhaseStartedAt, durationSeconds])
 
+  // On the light ground: navy normally, amber-orange as a warning, red for the
+  // final stretch. (Gold text would fail contrast on cream, so warning uses a
+  // darker orange.)
   const color =
     remaining <= 30
       ? Colors.error
       : remaining <= 60
-      ? Colors.amber
-      : Colors.white
+      ? Colors.warn
+      : Colors.ink
 
   return <Text style={[styles.timer, { color }]}>{formatTime(remaining)}</Text>
 }
 
 const styles = StyleSheet.create({
   timer: {
+    fontFamily: Mono,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 2,

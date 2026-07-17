@@ -13,14 +13,14 @@ const DURATION = 200;
 const EASE = Easing.out(Easing.cubic);
 
 // Background colour must match screen bg for the gradient to blend seamlessly
-const BG = '#121212';
+const BG = '#FAF7F0';
 
 interface Props {
   showTop: boolean;
   showBottom: boolean;
   /** Height of each gradient band. Default 48. */
   height?: number;
-  /** Background colour for the opaque end of the gradient. Default #121212. */
+  /** Background colour for the opaque end of the gradient. Default #FAF7F0. */
   bg?: string;
 }
 

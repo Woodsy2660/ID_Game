@@ -31,13 +31,13 @@ const styles = StyleSheet.create({
     borderRadius: 99,
   },
   active: {
-    width: 20,
-    height: 6,
+    width: 22,
+    height: 7,
     backgroundColor: Colors.primary,
   },
   inactive: {
-    width: 6,
-    height: 6,
-    backgroundColor: Colors.border,
+    width: 7,
+    height: 7,
+    backgroundColor: Colors.borderStrong,
   },
 });

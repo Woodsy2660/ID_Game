@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '../../src/lib/supabase'
-import { usePlayerStore } from '../../src/stores/playerStore'
+import { usePlayerStore } from '../../src/store/playerStore'
 import { useGameStore } from '../../src/store/gameStore'
 import { useRoom } from '../../src/hooks/useRoom'
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer'
@@ -12,16 +12,22 @@ import { Badge } from '../../src/components/ui/Badge'
 import { Colors, Spacing, Typography, Layout } from '../../src/theme'
 import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay'
 import { useScrollFades } from '../../src/hooks/useScrollFades'
-import { removeAllChannels } from '../../src/lib/channelCleanup'
-import { BackButton } from '../../src/components/ui/BackButton'
+import { LeaveGameButton } from '../../src/components/game/LeaveGameButton'
 import { QuestionsPreviewButton } from '../../src/components/game/QuestionsPreviewButton'
 import { QuestionsPreviewModal } from '../../src/components/game/QuestionsPreviewModal'
-import type { GameStartPayload } from '../../src/store/types'
+import { AdultConsentGate } from '../../src/components/game/AdultConsentGate'
+import { useLeaveRoom } from '../../src/hooks/useLeaveRoom'
+import { ADULT_WARNING_VERSION, isMaturePack } from '../../src/data/packs'
+import type { GameStartPayload, PackId } from '../../src/store/types'
 
 export default function LobbyScreen() {
   const router = useRouter()
-  const { room_id, room_code, is_host, player_id, display_name } = usePlayerStore()
+  const { room_id, room_code, is_host, player_id, display_name, pack } = usePlayerStore()
   const clearRoom = usePlayerStore((s) => s.clearRoom)
+  const setPack = usePlayerStore((s) => s.setPack)
+  const setAdultConfirmed = usePlayerStore((s) => s.setAdultConfirmed)
+  const adultConfirmed = usePlayerStore((s) => s.adult_confirmed)
+  const leaveRoom = useLeaveRoom()
   const navigatedForward = useRef(false)
 
   useEffect(() => {
@@ -38,6 +44,7 @@ export default function LobbyScreen() {
       payload.players,
       player_id ?? '',
       room_code ?? '',
+      payload.pack,
       {
         qmPlayerId: payload.qmPlayerId,
         questionId: payload.questionId,
@@ -45,7 +52,10 @@ export default function LobbyScreen() {
         roundId: payload.roundId,
       }
     )
-    router.push('/(game)/round-start')
+    // replace (not push) so the lobby unmounts for the game — otherwise it
+    // lingers underneath, keeping a duplicate presence channel alive and
+    // re-triggering its 18+ gate after the game ends.
+    router.replace('/(game)/round-start')
   }, [router, player_id, room_code])
 
   const [previewVisible, setPreviewVisible] = useState(false)
@@ -56,8 +66,41 @@ export default function LobbyScreen() {
     player_id ?? '',
     display_name ?? '',
     is_host,
-    handleGameStart
+    handleGameStart,
+    pack
   )
+
+  // Joiners don't receive the room's pack from the (possibly un-redeployed)
+  // join-room function, so learn it from the host's presence entry. This makes
+  // the lobby preview and the 18+ gate work peer-to-peer, deploy-independent.
+  const hostPack = (players.find((p) => p.is_host) as { pack?: PackId | null } | undefined)?.pack ?? null
+  useEffect(() => {
+    // Only while actually in a room — never re-set the pack after the room is
+    // cleared (game end), which would otherwise re-arm the consent gate.
+    if (room_id && !is_host && hostPack && hostPack !== pack) {
+      setPack(hostPack)
+    }
+  }, [hostPack, is_host, pack, setPack, room_id])
+
+  // Gate joiners of a mature room: show the 18+ confirmation before they can
+  // stay. Declining leaves the room. (The host already confirmed at create.)
+  const needsConsent = !!room_id && !is_host && isMaturePack(pack) && !adultConfirmed
+  const recordConsent = async () => {
+    setAdultConfirmed(true)
+    try {
+      // Best-effort server record (works once join-room is redeployed).
+      await supabase.functions.invoke('join-room', {
+        body: {
+          room_code,
+          display_name,
+          adult_confirmed: true,
+          adult_warning_version: ADULT_WARNING_VERSION,
+        },
+      })
+    } catch {
+      // Non-fatal — local gate is satisfied regardless.
+    }
+  }
 
   const [starting, setStarting] = useState(false)
 
@@ -80,7 +123,7 @@ export default function LobbyScreen() {
   }
 
   return (
-    <ScreenContainer overlay={<BackButton onPress={() => { removeAllChannels(); clearRoom(); router.replace('/(auth)'); }} />}>
+    <ScreenContainer overlay={<LeaveGameButton note={is_host ? 'Leaving passes host to another player.' : undefined} />}>
 
       {/* Room code */}
       <View style={styles.header}>
@@ -151,6 +194,13 @@ export default function LobbyScreen() {
         )}
       </View>
 
+      {/* 18+ gate for joiners of a mature room (host confirmed at create). */}
+      <AdultConsentGate
+        visible={needsConsent}
+        onConfirm={recordConsent}
+        onCancel={leaveRoom}
+      />
+
     </ScreenContainer>
   )
 }
@@ -172,7 +222,7 @@ const styles = StyleSheet.create({
   roomCode: {
     fontSize: 32,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.ink,
     letterSpacing: 8,
   },
   shareHint: {
@@ -201,7 +251,7 @@ const styles = StyleSheet.create({
     ...Typography.body,
   },
   playerNameYou: {
-    color: Colors.primary,
+    color: Colors.ink,
   },
   footer: {
     paddingTop: Spacing.lg,

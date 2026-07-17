@@ -12,13 +12,14 @@ import { useRouter } from 'expo-router';
 import { LeaderboardIDCard } from '../../src/components/game/LeaderboardIDCard';
 import { LeaderboardCompactRow } from '../../src/components/game/LeaderboardCompactRow';
 import { EndGameModal } from '../../src/components/game/EndGameModal';
+import { LeaveGameButton } from '../../src/components/game/LeaveGameButton';
 import { ScrollFadeOverlay } from '../../src/components/ui/ScrollFadeOverlay';
 import { useScrollFades } from '../../src/hooks/useScrollFades';
 import { useGameStore } from '../../src/store/gameStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
-import { usePlayerStore } from '../../src/stores/playerStore';
+import { usePlayerStore } from '../../src/store/playerStore';
 import { supabase } from '../../src/lib/supabase';
-import { removeAllChannels } from '../../src/lib/channelCleanup';
+import { Colors } from '../../src/theme';
 
 /**
  * Leaderboard screen — shows cumulative scores after each round.
@@ -75,9 +76,11 @@ export default function LeaderboardScreen() {
       router.replace('/(game)/round-start');
     },
     onGameEnded: () => {
-      removeAllChannels();
+      // Route to the closing ceremony instead of dumping straight home.
+      // final-results reads the final scores from the game store and handles
+      // channel/session cleanup when the player leaves it.
       usePlayerStore.getState().clearRoom();
-      router.replace('/');
+      router.replace('/(game)/final-results');
     },
   });
 
@@ -171,6 +174,7 @@ export default function LeaderboardScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <LeaveGameButton note={isHost ? 'Leaving passes host to another player.' : undefined} />
       <View style={styles.container}>
         {/* Top-right "End game" action — host only */}
         {isHost && (
@@ -190,89 +194,55 @@ export default function LeaderboardScreen() {
           <Text style={styles.subtitle}>After Round {currentRound + 1}</Text>
         </View>
 
-        {/* Scrollable player list */}
+        {/* Scrollable player list — one layout for any player count */}
         <View style={styles.listWrapper}>
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={[
-              styles.scrollContent,
-              ranked.length <= 3 && styles.scrollContentCentered,
-              ranked.length >= 4 && ranked.length < 7 && styles.scrollContentCenteredSmall,
-            ]}
+            contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             onScroll={scrollHandler}
             scrollEventThrottle={16}
             onContentSizeChange={fadeContentSizeChange}
             onLayout={fadeLayout}
           >
-            {ranked.length < 7 ? (
-              /* <7 players — stack all podium cards vertically as large cards, centered */
-              <View style={styles.centeredPodium}>
-                <View style={styles.podiumColumn}>
-                  {top3.map((p, i) => (
-                    <LeaderboardIDCard
-                      key={p.id}
-                      rank={(i + 1) as 1 | 2 | 3}
-                      playerName={p.displayName}
-                      score={p.score}
-                      delay={i * 100}
-                      size="large"
-                    />
-                  ))}
-                  {/* Ranks 4–6 as compact rows, same width as large podium cards */}
-                  {rest.map((p, i) => (
-                    <View key={p.id} style={styles.compactRowAligned}>
-                      <LeaderboardCompactRow
-                        rank={i + 4}
-                        playerName={p.displayName}
-                        score={p.score}
-                        delay={(i + 3) * 80}
-                      />
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : (
-              /* 7+ players — triple stack podium + compact rows */
-              <>
-                {/* Gold card centered on top */}
-                <View style={styles.podiumColumn}>
-                  <LeaderboardIDCard
-                    rank={1}
-                    playerName={top3[0].displayName}
-                    score={top3[0].score}
-                    delay={0}
-                  />
-                </View>
+            {/* #1 — full-width hero card */}
+            {top3[0] && (
+              <LeaderboardIDCard
+                rank={1}
+                playerName={top3[0].displayName}
+                score={top3[0].score}
+                delay={0}
+                size="large"
+              />
+            )}
 
-                {/* Silver + Bronze side by side */}
-                <View style={styles.podiumRow}>
-                  {top3.slice(1).map((p, i) => (
+            {/* #2 & #3 — side by side (a lone #2 fills the width) */}
+            {top3.length > 1 && (
+              <View style={styles.podiumRow}>
+                {top3.slice(1).map((p, i) => (
+                  <View key={p.id} style={styles.podiumCol}>
                     <LeaderboardIDCard
-                      key={p.id}
                       rank={(i + 2) as 2 | 3}
                       playerName={p.displayName}
                       score={p.score}
                       delay={(i + 1) * 100}
                     />
-                  ))}
-                </View>
-
-                {/* Gap between podium and list */}
-                {rest.length > 0 && <View style={styles.sectionGap} />}
-
-                {/* Ranks 4+ as compact rows */}
-                {rest.map((p, i) => (
-                  <LeaderboardCompactRow
-                    key={p.id}
-                    rank={i + 4}
-                    playerName={p.displayName}
-                    score={p.score}
-                    delay={(i + 3) * 80}
-                  />
+                  </View>
                 ))}
-              </>
+              </View>
             )}
+
+            {/* #4+ — compact rows */}
+            {rest.length > 0 && <View style={styles.sectionGap} />}
+            {rest.map((p, i) => (
+              <LeaderboardCompactRow
+                key={p.id}
+                rank={i + 4}
+                playerName={p.displayName}
+                score={p.score}
+                delay={(i + 3) * 70}
+              />
+            ))}
           </ScrollView>
 
           <ScrollFadeOverlay showTop={showTopFade} showBottom={showBottomFade} />
@@ -321,13 +291,16 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: Colors.bg,
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 48,
     paddingBottom: 32,
+    maxWidth: 430,
+    width: '100%',
+    alignSelf: 'center',
   },
   endGameAction: {
     position: 'absolute',
@@ -335,32 +308,35 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 10,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: Colors.borderStrong,
+    backgroundColor: Colors.surface,
   },
   endGameActionText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '600',
+    color: Colors.inkSoft,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 36,
+    marginBottom: 28,
+    marginTop: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFD700',
+    fontSize: 30,
+    fontWeight: '900',
+    color: Colors.ink,
+    letterSpacing: -0.5,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#555555',
+    fontWeight: '700',
+    color: Colors.inkSoft,
     textTransform: 'uppercase',
-    letterSpacing: 1.1,
+    letterSpacing: 1.2,
     textAlign: 'center',
     marginTop: 3,
   },
@@ -373,34 +349,17 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 16,
-    gap: 8,
-  },
-  scrollContentCentered: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  scrollContentCenteredSmall: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingTop: 8,
-  },
-  centeredPodium: {
-    alignItems: 'center',
-  },
-  podiumColumn: {
-    alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   podiumRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
-  compactRowAligned: {
-    width: 210,
+  podiumCol: {
+    flex: 1,
   },
   sectionGap: {
-    height: 6,
+    height: 4,
   },
   footer: {
     alignItems: 'center',
@@ -408,42 +367,39 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   nextQMText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.ink,
     textAlign: 'center',
   },
   ctaButton: {
     width: '100%',
-    height: 52,
-    borderRadius: 20,
-    backgroundColor: '#FFD700',
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: 'rgba(255,215,0,0.25)',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 16,
-    elevation: 6,
+    borderBottomWidth: 4,
+    borderBottomColor: Colors.primaryEdge,
   },
   ctaPressed: {
-    opacity: 0.9,
-    transform: [{ translateY: 1 }],
+    opacity: 0.94,
+    transform: [{ translateY: 2 }],
   },
   ctaDisabled: {
     opacity: 0.4,
   },
   ctaText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#121212',
+    fontWeight: '800',
+    color: Colors.onPrimary,
     textTransform: 'uppercase',
     letterSpacing: 0.98,
   },
   waitingText: {
     fontSize: 14,
-    fontWeight: '400',
-    color: '#555555',
+    fontWeight: '500',
+    color: Colors.inkSoft,
     textAlign: 'center',
   },
 });

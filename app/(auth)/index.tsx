@@ -18,7 +18,7 @@ import Animated, {
 import { useAuthContext } from '../_layout'
 import { Button } from '../../src/components/ui/Button'
 import { Logo } from '../../src/components/ui/Logo'
-import { Colors, Typography } from '../../src/theme'
+import { Colors, Typography, Spacing } from '../../src/theme'
 import { useOnboarding } from '../../src/hooks/useOnboarding'
 import { OnboardingModal } from '../../src/components/onboarding/OnboardingModal'
 
@@ -143,6 +143,9 @@ export default function HomeScreen() {
 
           {/* ── Footer ── */}
           <Animated.View style={[styles.footer, footerStyle]}>
+            <TouchableOpacity onPress={() => router.push('/privacy')} hitSlop={8}>
+              <Text style={styles.privacyLink}>Privacy</Text>
+            </TouchableOpacity>
             <Text style={styles.footerText}>made with love by the Stanmore Youngins</Text>
           </Animated.View>
 
@@ -155,7 +158,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.bg,
   },
   inner: {
     flex: 1,
@@ -187,13 +190,13 @@ const styles = StyleSheet.create({
   titleGold: {
     fontSize: 36.4,
     fontWeight: '900',
-    color: Colors.primary,
+    color: Colors.ink,
   },
   tagline: {
     fontSize: 16,
-    fontWeight: '400',
+    fontWeight: '500',
     lineHeight: 22,
-    color: '#AAAAAA',
+    color: Colors.inkSoft,
     textAlign: 'center',
     marginBottom: 70,
   },
@@ -209,30 +212,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     minHeight: 44,
+    backgroundColor: Colors.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   howToPlayIcon: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
+    borderColor: Colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
   },
   howToPlayIconText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
+    fontWeight: '800',
+    color: Colors.navy,
     lineHeight: 14,
   },
   howToPlayText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.muted,
-    letterSpacing: 0.3,
+    color: Colors.ink,
+    letterSpacing: 0.2,
   },
 
   /* ── Auth error ── */
@@ -246,6 +253,13 @@ const styles = StyleSheet.create({
   /* ── Footer ── */
   footer: {
     alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  privacyLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.muted,
+    textDecorationLine: 'underline',
   },
   footerText: {
     fontSize: 11,

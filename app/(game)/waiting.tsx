@@ -2,8 +2,9 @@ import React, { useEffect } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../../src/components/ui/ScreenContainer';
+import { LeaveGameButton } from '../../src/components/game/LeaveGameButton';
 import { useGameStore } from '../../src/store/gameStore';
-import { usePlayerStore } from '../../src/stores/playerStore';
+import { usePlayerStore } from '../../src/store/playerStore';
 import { useGameChannel } from '../../src/hooks/useGameChannel';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, Typography } from '../../src/theme';
@@ -18,7 +19,7 @@ export default function WaitingScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
   const players = useGameStore((s) => s.players);
   const setAnswerPhaseStartedAt = useGameStore((s) => s.setAnswerPhaseStartedAt);
-  const { room_code } = usePlayerStore();
+  const { room_code, pack } = usePlayerStore();
 
   // Fetch current players if not yet loaded
   useEffect(() => {
@@ -39,7 +40,8 @@ export default function WaitingScreen() {
               isHost: p.is_host,
             })),
             usePlayerStore.getState().player_id ?? '',
-            room_code
+            room_code,
+            pack
           )
         }
       }
@@ -67,9 +69,9 @@ export default function WaitingScreen() {
   });
 
   return (
-    <ScreenContainer centered>
+    <ScreenContainer centered overlay={<LeaveGameButton />}>
       <View style={styles.container}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={Colors.navy} />
         <Text style={styles.title}>A round is in progress</Text>
         <Text style={styles.subtitle}>You'll join the action shortly...</Text>
 
