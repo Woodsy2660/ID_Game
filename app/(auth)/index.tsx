@@ -18,6 +18,7 @@ import Animated, {
 import { useAuthContext } from '../_layout'
 import { Button } from '../../src/components/ui/Button'
 import { Logo } from '../../src/components/ui/Logo'
+import { InstagramPill } from '../../src/components/ui/InstagramPill'
 import { Colors, Typography, Spacing } from '../../src/theme'
 import { useOnboarding } from '../../src/hooks/useOnboarding'
 import { OnboardingModal } from '../../src/components/onboarding/OnboardingModal'
@@ -79,6 +80,7 @@ export default function HomeScreen() {
   const logoStyle = useScaleEntry(100, reduceMotion)
   const titleStyle = useStaggeredEntry(200, reduceMotion)
   const taglineStyle = useStaggeredEntry(300, reduceMotion)
+  const instagramPillStyle = useStaggeredEntry(400, reduceMotion)
   const howToPlayStyle = useStaggeredEntry(400, reduceMotion)
   const createBtnStyle = useStaggeredEntry(500, reduceMotion)
   const joinBtnStyle = useStaggeredEntry(600, reduceMotion)
@@ -88,6 +90,11 @@ export default function HomeScreen() {
     <>
       <OnboardingModal {...onboarding} />
       <SafeAreaView style={styles.safe}>
+        {/* ── Instagram — top left ── */}
+        <Animated.View style={[styles.instagramWrap, instagramPillStyle]}>
+          <InstagramPill />
+        </Animated.View>
+
         {/* ── How to play — top right ── */}
         <Animated.View style={[styles.howToPlayWrap, howToPlayStyle]}>
           <TouchableOpacity onPress={onboarding.open} style={styles.howToPlay}>
@@ -199,6 +206,14 @@ const styles = StyleSheet.create({
     color: Colors.inkSoft,
     textAlign: 'center',
     marginBottom: 70,
+  },
+
+  /* ── Instagram ── */
+  instagramWrap: {
+    position: 'absolute',
+    top: 22,
+    left: 28,
+    zIndex: 10,
   },
 
   /* ── How to play ── */
